@@ -297,7 +297,7 @@
 - **决定：** 项目以公开 GitHub 仓库 `luobosibing2/codex-siri-remote` 发布，默认分支为 `main`；仓库标题使用 “Codex Siri Remote”，同时在 README 顶部和许可证说明中明确其基于 SiriRemoteForge。
 - **原因：** 用户确认将当前实机调优版本作为开源项目提交，并选择 `codex-siri-remote` 作为公开仓库名。
 - **影响：** README 的 clone 命令使用最终公开 URL；发布提交不得包含 `~/.config/siriremote/config.jsonc`、`logs/`、凭据或本机绝对路径。公开历史继续继承上游固定提交。
-- **证据或验证：** 发布前运行敏感信息审计、构建、软件验证、`git diff --check` 和提交范围检查；创建公开仓库、推送 `main` 后再记录远端 URL 和提交。
+- **证据或验证：** 2026-07-29 已创建公开仓库 [luobosibing2/codex-siri-remote](https://github.com/luobosibing2/codex-siri-remote)，默认分支为 `main`；首个 V1 发布提交为 `8e639187950969b9f057a58de36d12ea6b2dbbff`。GitHub 已识别 GPL-3.0，远端提交继承固定上游历史。
 
 ### D-037 软件与实机完成边界
 
@@ -315,6 +315,7 @@
 - **Swift：** `6.3.3`
 - **Codex Desktop：** `26.721.41059`，bundle ID `com.openai.codex`
 - **Chrome bundle ID：** `com.google.Chrome`
+- **公开仓库：** [luobosibing2/codex-siri-remote](https://github.com/luobosibing2/codex-siri-remote)，Public，默认分支 `main`
 - **未修改基线构建：** `cd app && ./build.sh` 成功
 - **2026-07-26 审计日志基线 SHA-256：** `4a45abf81d6dd4aa8e8a9aeca72f4e2e4890c477247f8c3f00c424e40be0b6bc`
 - **2026-07-28 当前审计文件 SHA-256：** `cede00c793f77e7b38621760e495c81d652b2539eba9e39f419ffe9224039008`；文件修改时间为 2026-07-27 22:14:09，说明本地运行时在基线后更新过该文件。该文件仍由 `.git/info/exclude` 本地忽略，不纳入本次提交。

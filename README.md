@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="SiriRemoteForge" width="132" height="132">
+<img src="assets/logo.png" alt="Codex Siri Remote" width="132" height="132">
 
-# 🛰️ SiriRemoteForge
+# 🎛️ Codex Siri Remote
 
-### Thirteen buttons. However many meanings you want.
+### Control Codex Desktop with a third-generation Apple Siri Remote.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 &nbsp;![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
@@ -12,12 +12,196 @@
 &nbsp;![Frameworks](https://img.shields.io/badge/private-MultitouchSupport%20·%20SkyLight-8A2BE2)
 &nbsp;![App Store](https://img.shields.io/badge/App%20Store-never-critical)
 
-*The Apple TV remote in your drawer is a 27 mm square of glass and thirteen buttons.*
-*This turns it into a Mac controller where **you** decide what each of them means — and where the*
-*meaning changes with whichever app you happen to be looking at. If you're brave, it can even become*
-*a microphone.*
+*An open-source, Track-A-first controller profile built on*
+*[SiriRemoteForge](https://github.com/HOLODATA-COM/SiriRemoteForge).*
 
 </div>
+
+---
+
+## Codex Remote V1：中文快速开始
+
+这个分叉把第三代 Siri Remote 变成 Codex Desktop 的手持控制器。它优先采用
+**轨道 A**：不修改 Codex，也不接入 app-server，而是通过 macOS 的鼠标、键盘、
+Accessibility 和应用激活能力完成控制。未来的原生集成只复用
+[`WorkflowIntentExecuting`](SiriRemoteCore/Sources/SiriRemoteCore/WorkflowIntentExecutor.swift#L31-L41)
+这条语义接口。
+
+### 买哪个型号
+
+请购买 **第三代 Siri Remote，型号 A2854，USB-C 充电口，2022 年推出**。
+
+- 机身底部应为 USB-C，而不是旧款 Lightning；
+- 它具备触控圆盘、实体方向环、Siri、TV、返回、播放/暂停、音量和静音键；
+- Apple 官方规格确认 A2854 使用 Bluetooth 5.0，并支持触控、轻点和圆周手势：
+  [Siri Remote（第 3 代）技术规格](https://support.apple.com/en-ie/111844)；
+- 本项目实机识别到的 Apple HID 标识为 Vendor ID `0x004C`、Product ID `0x0315`。
+
+目前 V1 只把 A2854 作为验收型号。外观相近的旧款可能能够连接，但不属于本项目承诺的
+测试范围。
+
+首次安装请按这个顺序进行：
+**连接 A2854 → 构建 `.app` → 安装 V1 配置 → 首次启动并授权 → 实机验收**。
+
+### 当前键位
+
+| 遥控器输入 | Codex 前台 | Chrome / 其他应用 |
+|---|---|---|
+| 触控圆盘 | 鼠标移动、轻触点击、圆周滚动 | 同左 |
+| 方向环上 / 下 | 菜单和审批选项移动 | 普通上 / 下方向键 |
+| 方向环左 / 右 | 返回 / 前进导航历史（`⌘-[` / `⌘-]`） | 普通左 / 右方向键 |
+| 中心键 | 鼠标按下、点击和拖拽 | 鼠标按下、点击和拖拽 |
+| TV / 显示器键单击 | Return：发送 | Return |
+| TV / 显示器键双击 | 双 Escape，中断当前运行 | 双 Escape |
+| `<` 返回键 | 在 Codex 与 Chrome 之间切换 | 切换回 Codex |
+| Play/Pause | `⌘-B`：显示或隐藏 Codex 边栏 | 保留系统媒体播放 / 暂停 |
+| 按住 Siri | 聚焦当前任务最底部输入框，等待 120 ms，再按住 Fn；松开释放 Fn | 直接按住 / 释放 Fn |
+| 音量、静音、Power | 不接管，保留系统行为 | 不接管，保留系统行为 |
+
+Siri 键调用的是当前输入法对 Fn 的响应；本机方案使用豆包输入法和 Mac 麦克风。V1
+不会启用遥控器麦克风，也不会把 Fn 绑定到 Codex 自带的全局听写。
+
+### 1. 把遥控器连接到 Mac
+
+1. 先通过 USB-C 给遥控器充电。
+2. 打开 Mac 的 **系统设置 → 蓝牙**。
+3. 将遥控器贴近 Mac，同时按住 **`<` 返回键 + 音量加键**约 5 秒，使它进入配对状态。
+4. 在“附近的设备”中找到 `siriremote` 或 Siri Remote，点击“连接”。
+5. 如果遥控器仍被 Apple TV 抢占，先让它远离 Apple TV；也可以按住
+   **TV / 控制中心键 + 音量减键**约 5 秒重启遥控器，再重复配对。
+
+配对和重启组合键来自
+[Apple 官方的 Siri Remote 重新连接说明](https://support.apple.com/en-gb/102569)；
+官方页面以 Apple TV 为连接目标，在第 4 步改为从 Mac 蓝牙设置完成连接即可。
+
+连接后可在终端确认：
+
+```sh
+system_profiler SPBluetoothDataType | sed -n '/siriremote:/,/Services:/p'
+```
+
+输出中应看到 `Connected: Yes`，A2854 通常还会显示 Vendor ID `0x004C` 和 Product ID
+`0x0315`。如果你的设备名称不是 `siriremote`，把命令中的名称换成蓝牙设置里显示的名称。
+
+### 2. 从源码构建和部署
+
+要求：
+
+- Apple Silicon 或 Intel Mac，macOS 13 或更高版本；当前 Codex V1 实机验证环境为
+  Apple Silicon；
+- Xcode Command Line Tools，可用 `xcode-select --install` 安装；
+- 已按上一节通过系统蓝牙连接 A2854。
+
+克隆公开仓库后运行：
+
+```sh
+git clone https://github.com/luobosibing2/codex-siri-remote.git
+cd codex-siri-remote/app
+./build.sh
+./create_app_bundle.sh
+```
+
+`build.sh` 生成命令行可执行文件 `app/HyperVibe`；
+`create_app_bundle.sh` 生成菜单栏应用 `app/HyperVibe.app` 并附带 GPL 许可证与 NOTICE。
+应用默认不会出现在 Dock；启动后从菜单栏图标打开设置或退出。
+
+本地如果没有 `siriRemote Local Signing` 证书，脚本会使用 ad-hoc 签名。这适合源码部署，
+但每次重新生成 `.app` 后签名身份可能变化，macOS 可能要求重新授权。
+
+### 3. 安装 Codex V1 配置
+
+在仓库根目录运行：
+
+```sh
+mkdir -p ~/.config/siriremote
+cp examples/codex-remote-v1.jsonc ~/.config/siriremote/config.jsonc
+```
+
+配置文件 [`examples/codex-remote-v1.jsonc`](examples/codex-remote-v1.jsonc) 是本项目的
+推荐布局。运行中的应用会热重载 `~/.config/siriremote/config.jsonc`，修改后通常无需重启。
+应用不会修改 `~/.codex/keybindings.json`。
+
+### 4. 授予 macOS 权限
+
+先在仓库根目录首次启动应用：
+
+```sh
+open app/HyperVibe.app
+```
+
+随后打开 **系统设置 → 隐私与安全性**，将刚生成的 `HyperVibe.app` 加入并启用：
+
+- **辅助功能（Accessibility）**：移动鼠标、发送快捷键、聚焦 Codex 输入框；
+- **输入监控（Input Monitoring）**：读取遥控器实体按键和 HID 事件；
+- 系统首次询问时允许蓝牙访问。
+
+授权后完全退出并重新打开应用：
+
+```sh
+pkill -x HyperVibe || true
+open app/HyperVibe.app
+```
+
+如果重新构建 `.app` 后，设置中虽然仍显示已开启，但按键突然无响应，可以重置旧授权，
+再把当前 `app/HyperVibe.app` 重新加入两个列表：
+
+```sh
+tccutil reset Accessibility com.hypervibe.app
+tccutil reset ListenEvent com.hypervibe.app
+```
+
+这会删除该 bundle ID 的旧授权，下一次启动必须重新确认；正常升级时不要反复执行。
+
+### 5. 验证安装
+
+先打开运行日志：
+
+```sh
+tail -f /tmp/hypervibe.log
+```
+
+正常启动应能看到 Input Monitoring 已授权、event tap 已安装、A2854 被识别，以及前台
+应用命中的 profile。随后依次验证：
+
+1. 触控圆盘移动鼠标，轻触点击，沿外圈滑动滚动；
+2. Codex 中上 / 下选择菜单，左 / 右返回和前进；
+3. 中心键点击或拖拽，TV 单击发送，TV 双击中断；
+4. `<` 键在 Codex 与 Chrome 之间切换；
+5. Play/Pause 连按两次，确认 Codex 边栏关闭后恢复；
+6. 在焦点不位于输入框时第一次按住 Siri，确认它直接聚焦最底部输入框并启动豆包，
+   松开后停止且没有 Fn 粘键。
+
+开发者还应运行当前软件验收：
+
+```sh
+./tests/run-software-verification.sh
+(cd app && ./build.sh)
+git diff --check
+```
+
+软件测试只能验证事件顺序、配置路由和可构建性，不能替代 A2854 与豆包输入法的真实
+联合验收。完整的决策、证据与剩余边界以 [`DECISIONS.md`](DECISIONS.md) 为准。
+
+### 已知边界
+
+- 项目使用私有 `MultitouchSupport` 框架；macOS 升级可能影响触控圆盘。
+- Codex 的 Accessibility 结构或快捷键升级后，需重新验证底部输入框、`⌘-B`、双 Escape
+  中断以及返回 / 前进。
+- 当前布局没有专用的单 Escape 拒绝键；审批时请用触控点击拒绝。审批界面误双击 TV
+  可能让两个 Escape 作用于不同状态。
+- 当前 Command Line Tools 环境缺少 XCTest，因此上游 `swift test` 未被列为已通过；
+  新增工作流逻辑由 [`tests/run-software-verification.sh`](tests/run-software-verification.sh)
+  覆盖。安装完整 Xcode 后仍建议补跑 `swift test`。
+- 不要运行麦克风、LaunchDaemon、PacketLogger 或 Power 键安装流程；它们不属于 Codex
+  Remote V1。
+
+### 开源来源与许可证
+
+本项目保留 [SiriRemoteForge](https://github.com/HOLODATA-COM/SiriRemoteForge) 的 Git
+历史，并基于上游提交
+[`10581a960f0738e36516defb79db24b18df214d3`](https://github.com/HOLODATA-COM/SiriRemoteForge/commit/10581a960f0738e36516defb79db24b18df214d3)
+开发。代码继续采用 [GPL-3.0-or-later](LICENSE)，二进制分发必须一并保留
+[NOTICE](NOTICE)、许可证和对应源码。私有 macOS 框架意味着它不适合 App Store 或沙盒分发。
 
 ---
 
@@ -68,10 +252,15 @@ This fork adds a Track-A workflow action that stays independent of Codex interna
 [`examples/codex-remote-v1.jsonc`](examples/codex-remote-v1.jsonc) to
 `~/.config/siriremote/config.jsonc` to use the agreed A2854 layout:
 
-- click-ring: arrow keys; touch surface: upstream cursor, tap-to-click, and circular scroll;
-- Center: Return in Codex; upstream mouse click/drag in Chrome and other apps;
-- Back: one Escape; Play/Pause: two Escapes 200 ms apart;
-- hold Siri: real Fn-down/Fn-up for the active input method; TV: Codex/Chrome toggle.
+- click-ring: Up/Down navigate normally; in Codex, Left/Right send navigation-history
+  Back/Forward (`⌘-[` / `⌘-]`), while other apps retain arrow keys; touch surface: upstream
+  cursor, tap-to-click, and circular scroll;
+- Center: upstream mouse click/drag in every app, including Codex;
+- TV: single-tap Return/send, double-tap interrupt with two Escapes 200 ms apart;
+  Back (`<`): Codex/Chrome toggle; in Codex, Play/Pause sends `⌘-B` to toggle the sidebar,
+  while other apps retain native media behavior;
+- hold Siri: in Codex, focus the current window's bottom composer, allow 120 ms for focus to
+  settle, then produce real Fn-down/Fn-up; other apps keep the immediate Fn hold behavior.
 
 Volume and Mute are unbound so their native system behavior remains. Power is intentionally
 unbound. This V1 does not start the remote/virtual microphone path, modify Codex, connect to
@@ -242,7 +431,7 @@ Sleep all keep working.
 > of the remote's HID interfaces seized, `loginwindow` still received the button and slept the Mac.
 > It reaches loginwindow by a path userspace cannot intercept, so the preference above is the only
 > real lever. Short presses *appeared* to work only because loginwindow debounces them at 350 ms —
-> which is also why long presses failed every time. See `HANDOFF.md` for the full evidence.
+> which is also why long presses failed every time.
 
 Pressing Power also opens a **1-second input guard**: the button sits right next to the glass, so
 the press almost always brushes the trackpad, which used to instantly undo the dim it had just
@@ -564,8 +753,8 @@ cd driverkit && ./build-host.sh     # build-only DEXT + host check
 
 Debug logging goes to `/tmp/hypervibe.log` (HID events, device selection, executed actions).
 
-Current development state and continuation notes live in [`HANDOFF.md`](HANDOFF.md). The **working**
-microphone device is the `mic/` Bluetooth-router pipeline described [above](#microphone). Getting
+The **working** microphone device is the `mic/` Bluetooth-router pipeline described
+[above](#microphone). Getting
 there meant ruling out the *in-band* approaches first; those dead ends and the full evidence log live
 in [`docs/mic-reverse-engineering.md`](docs/mic-reverse-engineering.md).
 
@@ -601,8 +790,8 @@ alongside it. After every diagnostic, stop the flagged process and restore exact
 ## Contributing
 
 Issues and pull requests are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). If you are picking
-up where the last session left off, [`HANDOFF.md`](HANDOFF.md) is the honest state of things,
-including what is unfinished and which ideas were tried and rejected (and why).
+up Codex Remote work, use [`DECISIONS.md`](DECISIONS.md) for the accepted behavior, evidence,
+superseded choices, and remaining hardware-verification boundaries.
 
 ## Credits & license
 

@@ -9,6 +9,7 @@
 
 import Foundation
 import AppKit
+import ApplicationServices
 import CoreGraphics
 
 final class MacActionExecutor: ActionExecutor {
@@ -97,9 +98,58 @@ final class MacWorkflowEffectSink: WorkflowEffectSinking {
         Keys.synthesize(keys)
     }
 
+    @discardableResult
+    func focusBottomTextArea(bundleIdentifier: String) -> Bool {
+        guard let application = NSRunningApplication.runningApplications(
+            withBundleIdentifier: bundleIdentifier
+        ).first else {
+            NSLog("[siriRemote] cannot focus composer: app '\(bundleIdentifier)' is not running")
+            return false
+        }
+
+        let applicationElement = AXUIElementCreateApplication(application.processIdentifier)
+        let searchRoot = Self.elementAttribute(
+            applicationElement,
+            kAXFocusedWindowAttribute
+        ) ?? applicationElement
+
+        var visited = Set<CFHashCode>()
+        var candidates: [(element: AXUIElement, frame: CGRect)] = []
+        Self.collectBottomTextAreas(
+            from: searchRoot,
+            visited: &visited,
+            candidates: &candidates
+        )
+
+        guard let target = candidates.max(by: { $0.frame.minY < $1.frame.minY }) else {
+            NSLog("[siriRemote] cannot focus composer: no editable text area in front window")
+            return false
+        }
+
+        let result = AXUIElementSetAttributeValue(
+            target.element,
+            kAXFocusedAttribute as CFString,
+            kCFBooleanTrue
+        )
+        guard result == .success,
+              Self.boolAttribute(target.element, kAXFocusedAttribute) == true else {
+            NSLog("[siriRemote] cannot focus composer: AX focus failed (\(result.rawValue))")
+            return false
+        }
+
+        rmDebug(
+            "🎯 focused bottom text area for \(bundleIdentifier) "
+                + "at y=\(Int(target.frame.minY))"
+        )
+        return true
+    }
+
     func beginFunctionHold() -> Bool {
         guard heldFunctionKey == nil else { return true }
         heldFunctionKey = Keys.holdBegin("fn")
+        if heldFunctionKey != nil {
+            rmDebug("🎙️ Fn down")
+        }
         return heldFunctionKey != nil
     }
 
@@ -107,6 +157,7 @@ final class MacWorkflowEffectSink: WorkflowEffectSinking {
         guard let held = heldFunctionKey else { return }
         heldFunctionKey = nil
         Keys.holdEnd(held)
+        rmDebug("🎙️ Fn up")
     }
 
     func schedule(after delay: TimeInterval, _ action: @escaping () -> Void) {
@@ -141,6 +192,102 @@ final class MacWorkflowEffectSink: WorkflowEffectSinking {
             }
         }
         return true
+    }
+
+    private static func collectBottomTextAreas(
+        from element: AXUIElement,
+        visited: inout Set<CFHashCode>,
+        candidates: inout [(element: AXUIElement, frame: CGRect)]
+    ) {
+        guard visited.insert(CFHash(element)).inserted else { return }
+
+        if stringAttribute(element, kAXRoleAttribute) == kAXTextAreaRole,
+           boolAttribute(element, kAXEnabledAttribute) != false,
+           isAttributeSettable(element, kAXFocusedAttribute),
+           let frame = frameAttribute(element),
+           frame.width > 200,
+           frame.height > 20 {
+            candidates.append((element, frame))
+        }
+
+        for child in elementArrayAttribute(element, kAXChildrenAttribute) {
+            collectBottomTextAreas(
+                from: child,
+                visited: &visited,
+                candidates: &candidates
+            )
+        }
+    }
+
+    private static func elementAttribute(
+        _ element: AXUIElement,
+        _ attribute: String
+    ) -> AXUIElement? {
+        guard let value = attributeValue(element, attribute) else { return nil }
+        return (value as! AXUIElement)
+    }
+
+    private static func elementArrayAttribute(
+        _ element: AXUIElement,
+        _ attribute: String
+    ) -> [AXUIElement] {
+        attributeValue(element, attribute) as? [AXUIElement] ?? []
+    }
+
+    private static func stringAttribute(
+        _ element: AXUIElement,
+        _ attribute: String
+    ) -> String? {
+        attributeValue(element, attribute) as? String
+    }
+
+    private static func boolAttribute(
+        _ element: AXUIElement,
+        _ attribute: String
+    ) -> Bool? {
+        attributeValue(element, attribute) as? Bool
+    }
+
+    private static func frameAttribute(_ element: AXUIElement) -> CGRect? {
+        guard let position = attributeValue(element, kAXPositionAttribute),
+              let size = attributeValue(element, kAXSizeAttribute) else {
+            return nil
+        }
+
+        var point = CGPoint.zero
+        var dimensions = CGSize.zero
+        guard AXValueGetValue(position as! AXValue, .cgPoint, &point),
+              AXValueGetValue(size as! AXValue, .cgSize, &dimensions) else {
+            return nil
+        }
+        return CGRect(origin: point, size: dimensions)
+    }
+
+    private static func isAttributeSettable(
+        _ element: AXUIElement,
+        _ attribute: String
+    ) -> Bool {
+        var settable = DarwinBoolean(false)
+        return AXUIElementIsAttributeSettable(
+            element,
+            attribute as CFString,
+            &settable
+        ) == .success && settable.boolValue
+    }
+
+    private static func attributeValue(
+        _ element: AXUIElement,
+        _ attribute: String
+    ) -> CFTypeRef? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            attribute as CFString,
+            &value
+        ) == .success else {
+            return nil
+        }
+        return value
     }
 }
 

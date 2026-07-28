@@ -1,16 +1,18 @@
 // Codex Remote V1 (Track A) profile.
 // Copy to ~/.config/siriremote/config.jsonc, then edit/save to hot-reload.
-// Center remains the upstream mouse click/drag in Chrome and every non-Codex app.
+// Center remains the upstream mouse click/drag in every app, including Codex.
 {
   "settings": {
     "defaultMode": "global",
     "circularScroll": {
       "enabled": true,
       "minRadius": 0.35,
-      "startThreshold": 0.1,
-      "pixelsPerRadian": 75,
+      "startThreshold": 0.2,
+      "pixelsPerRadian": 30,
       "scrollEase": 0.3,
-      "invert": true
+      "invert": true,
+      "accelMin": 1.0,
+      "accelMax": 1.3
     }
   },
 
@@ -27,15 +29,17 @@
       "ring.left":  { "action": "keystroke", "keys": "left" },
       "ring.right": { "action": "keystroke", "keys": "right" },
 
-      "button.menu":      { "action": "workflow", "intent": "cancel" },
-      "button.playPause": { "action": "workflow", "intent": "interrupt" },
+      "button.menu":      { "action": "workflow", "intent": "toggleCodexChrome" },
       "button.siri":      { "action": "workflow", "intent": "dictationHold" },
-      "button.tv":        { "action": "workflow", "intent": "toggleCodexChrome" }
+      "button.tv":        { "action": "keystroke", "keys": "return" },
+      "button.tv.double": { "action": "workflow", "intent": "interrupt" }
     },
 
     "codex": {
       "inherits": "global",
-      "button.select": { "action": "workflow", "intent": "primary" }
+      "ring.left":    { "action": "keystroke", "keys": "cmd+[" },
+      "ring.right":   { "action": "keystroke", "keys": "cmd+]" },
+      "button.playPause": { "action": "keystroke", "keys": "cmd+b" }
     },
 
     "chrome": {

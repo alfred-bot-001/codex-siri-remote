@@ -74,6 +74,7 @@ public final class WorkflowIntentExecutorChain: WorkflowIntentExecuting {
 /// NSWorkspace through `MacWorkflowEffectSink`.
 public protocol WorkflowEffectSinking: AnyObject {
     func tapKey(_ keys: String)
+    @discardableResult func focusBottomTextArea(bundleIdentifier: String) -> Bool
     func beginFunctionHold() -> Bool
     func endFunctionHold()
     func schedule(after delay: TimeInterval, _ action: @escaping () -> Void)
@@ -139,9 +140,12 @@ public final class MacWorkflowIntentExecutor: WorkflowIntentExecuting {
     public static let codexBundleIdentifier = "com.openai.codex"
     public static let chromeBundleIdentifier = "com.google.Chrome"
     public static let interruptGap: TimeInterval = 0.2
+    public static let composerFocusSettleDelay: TimeInterval = 0.12
 
     private let effects: WorkflowEffectSinking
     private var functionHoldCount = 0
+    private var functionKeyIsDown = false
+    private var functionHoldGeneration = 0
 
     public init(effects: WorkflowEffectSinking) {
         self.effects = effects
@@ -175,16 +179,44 @@ public final class MacWorkflowIntentExecutor: WorkflowIntentExecuting {
         case .dictationHold:
             switch phase {
             case .began:
-                if functionHoldCount == 0, !effects.beginFunctionHold() {
+                guard functionHoldCount == 0 else {
+                    functionHoldCount += 1
+                    return .handled
+                }
+                functionHoldCount = 1
+
+                if context.bundleIdentifier == Self.codexBundleIdentifier {
+                    _ = effects.focusBottomTextArea(
+                        bundleIdentifier: Self.codexBundleIdentifier
+                    )
+                    functionHoldGeneration += 1
+                    let generation = functionHoldGeneration
+                    effects.schedule(after: Self.composerFocusSettleDelay) { [weak self] in
+                        guard let self,
+                              self.functionHoldCount > 0,
+                              self.functionHoldGeneration == generation else {
+                            return
+                        }
+                        self.functionKeyIsDown = self.effects.beginFunctionHold()
+                    }
+                    return .handled
+                }
+
+                guard effects.beginFunctionHold() else {
+                    functionHoldCount = 0
                     return .passThrough
                 }
-                functionHoldCount += 1
+                functionKeyIsDown = true
                 return .handled
             case .ended:
                 guard functionHoldCount > 0 else { return .handled }
                 functionHoldCount -= 1
                 if functionHoldCount == 0 {
-                    effects.endFunctionHold()
+                    functionHoldGeneration += 1
+                    if functionKeyIsDown {
+                        functionKeyIsDown = false
+                        effects.endFunctionHold()
+                    }
                 }
                 return .handled
             case .tapped:
@@ -202,8 +234,10 @@ public final class MacWorkflowIntentExecutor: WorkflowIntentExecuting {
     }
 
     public func releaseHeldInputs() {
-        guard functionHoldCount > 0 else { return }
+        functionHoldGeneration += 1
         functionHoldCount = 0
+        guard functionKeyIsDown else { return }
+        functionKeyIsDown = false
         effects.endFunctionHold()
     }
 }

@@ -688,8 +688,9 @@ class RemoteInputHandler {
         }
 
         // Select is normally the trackpad click. A profile may explicitly bind button.select to a
-        // workflow intent (Codex uses `primary`), in which case it follows the same paired physical
-        // phase path as every other workflow button.
+        // workflow intent, in which case it follows the same paired physical phase path as every
+        // other workflow button. The Codex V1 profile intentionally leaves it unbound for mouse
+        // click/drag.
         if buttonName == "select" {
             let key = RemoteInputHandler.configKey(for: buttonName)
             if workflowInputRouter.isOpen(button: buttonName)

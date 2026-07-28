@@ -133,7 +133,9 @@ if [ -f "HyperVibe.entitlements" ]; then
     if [ "$SIGN_MODE" = "stable" ] && [ -f "$SIGN_KC" ] \
         && security find-identity -p codesigning "$SIGN_KC" 2>/dev/null | grep -q "$SIGN_ID"; then
         echo "Signing with stable local identity ($SIGN_ID)..."
-        security unlock-keychain -p siriremote-local "$SIGN_KC" 2>/dev/null || true
+        # Never store a keychain password in the repository. If this custom keychain is locked,
+        # unlock it interactively before running this script:
+        #   security unlock-keychain "$SIGN_KC"
         codesign --force --entitlements "HyperVibe.entitlements" \
             --sign "$SIGN_ID" --keychain "$SIGN_KC" "${APP_BUNDLE}"
     else

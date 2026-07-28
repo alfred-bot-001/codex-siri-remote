@@ -28,6 +28,11 @@ private final class RecordingEffects: WorkflowEffectSinking {
         events.append("tap:\(keys)")
     }
 
+    func focusBottomTextArea(bundleIdentifier: String) -> Bool {
+        events.append("focus:\(bundleIdentifier)")
+        return true
+    }
+
     func beginFunctionHold() -> Bool {
         events.append("fn:down")
         return true
@@ -92,20 +97,46 @@ private struct SoftwareVerificationMain {
         try expect(config.appProfiles["default"] == "global", "default profile missing")
         try expect(config.modes["global"]?.bindings["button.power"] == nil, "Power must be unbound")
         try expect(config.modes["global"]?.bindings["button.volumeUp"] == nil, "volume must be native")
+        try expect(
+            config.settings.circularScroll.pixelsPerRadian == 30,
+            "Codex profile circular-scroll base speed must remain reduced"
+        )
+        try expect(
+            config.settings.circularScroll.accelMax == 1.3,
+            "Codex profile circular-scroll fast gain must remain capped"
+        )
 
         let actionExecutor = RecordingActionExecutor()
         let controller = Controller(engine: MappingEngine(config: config), executor: actionExecutor)
         controller.frontmostAppChanged(bundleID: "com.openai.codex")
         try expect(controller.currentMode == "codex", "Codex profile must resolve to codex mode")
         try expect(
-            controller.resolvedAction(for: "button.select") == .workflow(intent: .primary),
-            "Codex center must resolve to primary"
+            controller.resolvedAction(for: "button.select") == nil,
+            "Codex center must fall through to upstream mouse handling"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.tv") == .keystroke(keys: "return"),
+            "TV single tap must resolve to Return/send"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.tv.double")
+                == .workflow(intent: .interrupt),
+            "TV double tap must resolve to interrupt"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.menu")
+                == .workflow(intent: .toggleCodexChrome),
+            "Back button must resolve to Codex/Chrome toggle"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.playPause") == .keystroke(keys: "cmd+b"),
+            "Codex Play/Pause must resolve to the sidebar shortcut"
         )
         for (key, expected) in [
             ("ring.up", "up"),
             ("ring.down", "down"),
-            ("ring.left", "left"),
-            ("ring.right", "right"),
+            ("ring.left", "cmd+["),
+            ("ring.right", "cmd+]"),
         ] {
             try expect(controller.handle(InputEvent(key: key)), "\(key) must be bound")
             try expect(
@@ -118,6 +149,32 @@ private struct SoftwareVerificationMain {
         try expect(
             controller.resolvedAction(for: "button.select") == nil,
             "Chrome center must fall through to upstream mouse handling"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.tv") == .keystroke(keys: "return"),
+            "Chrome must retain the TV send/Return binding"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.tv.double")
+                == .workflow(intent: .interrupt),
+            "Chrome must retain the TV double-interrupt binding"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.menu")
+                == .workflow(intent: .toggleCodexChrome),
+            "Chrome Back button must switch to Codex"
+        )
+        try expect(
+            controller.resolvedAction(for: "ring.left") == .keystroke(keys: "left"),
+            "Chrome ring-left must retain the global arrow binding"
+        )
+        try expect(
+            controller.resolvedAction(for: "ring.right") == .keystroke(keys: "right"),
+            "Chrome ring-right must retain the global arrow binding"
+        )
+        try expect(
+            controller.resolvedAction(for: "button.playPause") == nil,
+            "Chrome Play/Pause must remain unbound for native media behavior"
         )
 
         let serialized = try ConfigWriter.serialize(config)
@@ -159,6 +216,9 @@ private struct SoftwareVerificationMain {
         let executor = WorkflowIntentExecutorChain([passThrough, macExecutor])
         let router = WorkflowInputRouter(executor: executor)
         let other = FrontmostAppContext(bundleIdentifier: "com.example.Other")
+        let codex = FrontmostAppContext(
+            bundleIdentifier: MacWorkflowIntentExecutor.codexBundleIdentifier
+        )
 
         try expect(
             router.begin(button: "siri", intent: .dictationHold, context: other),
@@ -171,6 +231,37 @@ private struct SoftwareVerificationMain {
         try expect(router.end(button: "siri", context: other), "Siri-up was not accepted")
         try expect(effects.events == ["fn:down", "fn:up"], "Fn-down/up must be strictly paired")
         try expect(passThrough.calls > 0, "passThrough must reach the fallback executor")
+
+        _ = router.begin(button: "siri", intent: .dictationHold, context: codex)
+        try expect(
+            effects.events.last
+                == "focus:\(MacWorkflowIntentExecutor.codexBundleIdentifier)",
+            "Codex Siri-down must focus the bottom text area first"
+        )
+        try expect(effects.scheduled.count == 1, "Codex Fn-down must wait for focus to settle")
+        try expect(
+            abs(effects.scheduled[0].delay - MacWorkflowIntentExecutor.composerFocusSettleDelay)
+                < 0.000_001,
+            "Codex focus-settle delay changed unexpectedly"
+        )
+        try expect(
+            effects.events.last != "fn:down",
+            "Codex Fn-down must not share the AX focus event cycle"
+        )
+        effects.scheduled[0].action()
+        try expect(effects.events.last == "fn:down", "settled Codex focus must start Fn")
+        _ = router.end(button: "siri", context: codex)
+        try expect(effects.events.last == "fn:up", "Codex Siri-up must release delayed Fn")
+
+        _ = router.begin(button: "siri", intent: .dictationHold, context: codex)
+        _ = router.end(button: "siri", context: codex)
+        let fnDownCountBeforeCancelledDelay = effects.events.filter { $0 == "fn:down" }.count
+        effects.scheduled[1].action()
+        try expect(
+            effects.events.filter { $0 == "fn:down" }.count == fnDownCountBeforeCancelledDelay,
+            "releasing Siri before focus settles must cancel the pending Fn-down"
+        )
+        effects.scheduled.removeAll()
 
         _ = router.begin(button: "siri", intent: .dictationHold, context: other)
         _ = router.begin(button: "alternateDictation", intent: .dictationHold, context: other)
@@ -209,15 +300,12 @@ private struct SoftwareVerificationMain {
 
         _ = router.begin(button: "select", intent: .primary, context: other)
         _ = router.end(button: "select", context: other)
-        try expect(effects.events.last == "tap:return", "Codex center must send Return")
+        try expect(effects.events.last == "tap:return", "primary workflow intent must send Return")
 
         _ = router.begin(button: "menu", intent: .cancel, context: other)
         _ = router.end(button: "menu", context: other)
         try expect(effects.events.last == "tap:escape", "Back must send one Escape")
 
-        let codex = FrontmostAppContext(
-            bundleIdentifier: MacWorkflowIntentExecutor.codexBundleIdentifier
-        )
         _ = router.begin(button: "tv", intent: .toggleCodexChrome, context: codex)
         _ = router.end(button: "tv", context: codex)
         _ = router.begin(button: "tv", intent: .toggleCodexChrome, context: other)

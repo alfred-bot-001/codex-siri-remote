@@ -27,6 +27,7 @@ private final class MicReportCaptureContext {
 class RemoteInputHandler {
     private let cursorController: CursorController
     private weak var menuBarManager: MenuBarManager?
+    private let workflowInputRouter: WorkflowInputRouter
     private var devices: [IOHIDDevice] = []
 
     // --- Mic/voice capture diagnostic (enabled with `--capture-mic`). The 3rd-gen remote streams
@@ -299,10 +300,18 @@ class RemoteInputHandler {
     /// button across multiple HID interfaces (6 seized here), so every physical press/release
     /// fires the callback N times. This collapses dup events to a single state transition.
     private var buttonState: [String: Bool] = [:]
+    /// Config reload ends workflow holds immediately; consume the matching physical key-up later
+    /// so it cannot be reinterpreted against the new mapping as a fresh tap.
+    private var suppressedWorkflowReleases: Set<String> = []
     
-    init(cursorController: CursorController, menuBarManager: MenuBarManager) {
+    init(
+        cursorController: CursorController,
+        menuBarManager: MenuBarManager,
+        workflowExecutor: WorkflowIntentExecuting
+    ) {
         self.cursorController = cursorController
         self.menuBarManager = menuBarManager
+        self.workflowInputRouter = WorkflowInputRouter(executor: workflowExecutor)
     }
     
     func setRemoteDevice(_ device: IOHIDDevice?) {
@@ -590,6 +599,9 @@ class RemoteInputHandler {
             return
         }
         buttonState[buttonName] = isPressed
+        if !isPressed, suppressedWorkflowReleases.remove(buttonName) != nil {
+            return
+        }
 
         // The remote can sleep between initial enumeration and a later Siri press. Re-send the
         // gen-3 enable byte at the physical start of every diagnostic trial so a stale activation
@@ -671,11 +683,20 @@ class RemoteInputHandler {
         // of the very press that summoned it (which must not then toggle the layer).
         if RemoteInputHandler.isAppWheelOpen {
             if pressed { onAppWheelButton?(buttonName) }
+            else { endPressScopedWork(buttonName) }
             return
         }
 
-        // Select is the trackpad click — handled separately for click/drag semantics.
+        // Select is normally the trackpad click. A profile may explicitly bind button.select to a
+        // workflow intent (Codex uses `primary`), in which case it follows the same paired physical
+        // phase path as every other workflow button.
         if buttonName == "select" {
+            let key = RemoteInputHandler.configKey(for: buttonName)
+            if workflowInputRouter.isOpen(button: buttonName)
+                || controller?.resolvedAction(for: key)?.isWorkflow == true {
+                routeButton(buttonName, pressed: pressed)
+                return
+            }
             handleSelectButton(pressed: intValue == 1)
             return
         }
@@ -714,6 +735,25 @@ class RemoteInputHandler {
         // release reverts the layer instead of toggling it sticky). Mark this FIRST — before the
         // Spaces / repeatKey early-returns — so a repeat-bound or Spaces key still counts as a use.
         markLayerUsed(byButton: buttonName, pressed: pressed)
+
+        // Workflow actions consume a complete physical press/release pair. On release, emit
+        // `.ended` first (so held effects such as Fn are lifted), then `.tapped` (so tap-only
+        // intents fire exactly once). The executor ignores phases that do not apply to an intent.
+        if !pressed, workflowInputRouter.end(
+            button: buttonName,
+            context: frontmostAppContext()
+        ) {
+            return
+        }
+        if pressed, case let .workflow(intent)? = controller.resolvedAction(for: tapKey) {
+            if workflowInputRouter.begin(
+                button: buttonName,
+                intent: intent,
+                context: frontmostAppContext()
+            ) {
+                return
+            }
+        }
 
         // 1) Spaces Mode: while armed, the ring becomes a desktop switcher. Intercept on press,
         //    BEFORE any config dispatch, and consume so the normal binding doesn't also fire.
@@ -1480,6 +1520,12 @@ class RemoteInputHandler {
         }
     }
 
+    private func frontmostAppContext() -> FrontmostAppContext {
+        FrontmostAppContext(
+            bundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        )
+    }
+
     // MARK: - Button Identification
 
     private func identifyButton(page: UInt32, usage: UInt32) -> String? {
@@ -1530,10 +1576,8 @@ class RemoteInputHandler {
         }
     }
     
-    /// Called on device removal, to make sure nothing this handler started outlives the device.
-    /// (It does not release keyboard modifiers, despite what this comment used to claim —
-    /// `Keys.synthesize` posts down and up in one synchronous call, so a disconnect cannot land
-    /// between them.)
+    /// Called on device removal, to make sure nothing this handler started outlives the device,
+    /// including the workflow Fn hold and the older repeat/push-to-talk state.
     private func releaseAllHeldKeys() {
         // Before clearing the state, end every press that is still open. Losing the device ends a
         // press with no release at all, so nothing it armed would otherwise be cancelled — a Select
@@ -1542,7 +1586,9 @@ class RemoteInputHandler {
         for name in Set(buttonState.keys).union(["select"]) {
             endPressScopedWork(name)
         }
+        releaseWorkflowInputs(suppressNextRelease: false)
         buttonState.removeAll()
+        suppressedWorkflowReleases.removeAll()
         // Sticky drag is designed to outlive letting go of the button AND the pad, so nothing else
         // would ever end it — and a BLE remote disconnects on idle. Picking something up and
         // walking away would otherwise leave the left mouse button held down across the whole
@@ -1561,6 +1607,16 @@ class RemoteInputHandler {
             layerName = nil
             layerUsed = false
         }
+    }
+
+    /// Release semantic holds synchronously. Called on device loss, app teardown, and before config
+    /// hot reload so an Fn-down can never outlive the mapping that created it.
+    func releaseWorkflowInputs(suppressNextRelease: Bool = true) {
+        let context = frontmostAppContext()
+        if suppressNextRelease {
+            suppressedWorkflowReleases.formUnion(workflowInputRouter.openButtons)
+        }
+        workflowInputRouter.cancelAll(context: context)
     }
 
     /// Cancel any window-delayed multi-tap work items (so a pending tap can't fire after a
@@ -1615,6 +1671,8 @@ class RemoteInputHandler {
 
     private func endPressScopedWork(_ buttonName: String) {
         stopKeyRepeat(buttonName)
+
+        _ = workflowInputRouter.cancel(button: buttonName, context: frontmostAppContext())
 
         // An open push-to-talk pair holds a toggle hotkey "on" between its edges the way a held
         // repeat key holds a key down — and like the key-up inside `stopKeyRepeat` above, the

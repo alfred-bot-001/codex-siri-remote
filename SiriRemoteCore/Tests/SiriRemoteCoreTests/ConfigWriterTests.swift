@@ -16,6 +16,8 @@ final class ConfigWriterTests: XCTestCase {
         let cases: [Action] = [
             .keystroke(keys: "cmd+shift+["),
             .keystroke(keys: "rctrl+rcmd+ropt"),          // modifier-only hyperkey chord
+            .workflow(intent: .interrupt),
+            .workflow(intent: .dictationHold),
             .pushToTalk(keys: "f17"),
             .pushToTalk(keys: "cmd+shift+d"),
             .media(key: "playpause"),
@@ -50,6 +52,10 @@ final class ConfigWriterTests: XCTestCase {
         var o = try encodeToObject(.keystroke(keys: "cmd+up"))
         XCTAssertEqual(o["action"] as? String, "keystroke")
         XCTAssertEqual(o["keys"] as? String, "cmd+up")
+
+        o = try encodeToObject(.workflow(intent: .toggleCodexChrome))
+        XCTAssertEqual(o["action"] as? String, "workflow")
+        XCTAssertEqual(o["intent"] as? String, "toggleCodexChrome")
 
         // pushToTalk mirrors keystroke's shape exactly, under its own discriminator.
         o = try encodeToObject(.pushToTalk(keys: "f17"))

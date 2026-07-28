@@ -51,6 +51,7 @@ SWIFT_FILES=(
     # --- SiriRemoteCore (pure engine, compiled into the binary) ---
     "../SiriRemoteCore/Sources/SiriRemoteCore/JSONC.swift"
     "../SiriRemoteCore/Sources/SiriRemoteCore/Action.swift"
+    "../SiriRemoteCore/Sources/SiriRemoteCore/WorkflowIntentExecutor.swift"
     "../SiriRemoteCore/Sources/SiriRemoteCore/Config.swift"
     "../SiriRemoteCore/Sources/SiriRemoteCore/ConfigLoader.swift"
     "../SiriRemoteCore/Sources/SiriRemoteCore/ConfigWriter.swift"

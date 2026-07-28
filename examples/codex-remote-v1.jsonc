@@ -1,0 +1,45 @@
+// Codex Remote V1 (Track A) profile.
+// Copy to ~/.config/siriremote/config.jsonc, then edit/save to hot-reload.
+// Center remains the upstream mouse click/drag in Chrome and every non-Codex app.
+{
+  "settings": {
+    "defaultMode": "global",
+    "circularScroll": {
+      "enabled": true,
+      "minRadius": 0.35,
+      "startThreshold": 0.1,
+      "pixelsPerRadian": 75,
+      "scrollEase": 0.3,
+      "invert": true
+    }
+  },
+
+  "appProfiles": {
+    "com.openai.codex": "codex",
+    "com.google.Chrome": "chrome",
+    "default": "global"
+  },
+
+  "modes": {
+    "global": {
+      "ring.up":    { "action": "keystroke", "keys": "up" },
+      "ring.down":  { "action": "keystroke", "keys": "down" },
+      "ring.left":  { "action": "keystroke", "keys": "left" },
+      "ring.right": { "action": "keystroke", "keys": "right" },
+
+      "button.menu":      { "action": "workflow", "intent": "cancel" },
+      "button.playPause": { "action": "workflow", "intent": "interrupt" },
+      "button.siri":      { "action": "workflow", "intent": "dictationHold" },
+      "button.tv":        { "action": "workflow", "intent": "toggleCodexChrome" }
+    },
+
+    "codex": {
+      "inherits": "global",
+      "button.select": { "action": "workflow", "intent": "primary" }
+    },
+
+    "chrome": {
+      "inherits": "global"
+    }
+  }
+}

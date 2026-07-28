@@ -1,7 +1,18 @@
 import Foundation
 
+/// Stable semantic commands shared by the current macOS executor and a future Codex-native
+/// executor. Keep these independent of CGEvent and Codex protocol types.
+public enum WorkflowIntent: String, Codable, CaseIterable {
+    case primary
+    case cancel
+    case interrupt
+    case dictationHold
+    case toggleCodexChrome
+}
+
 public enum Action: Equatable {
     case keystroke(keys: String)
+    case workflow(intent: WorkflowIntent)
     // Push-to-talk: fire `keys` on the button's PRESS edge AND again on its RELEASE edge,
     // immediately, bypassing tap/double/hold/taphold discrimination and auto-repeat entirely
     // (see RemoteInputHandler.routeButton). Built for toggle hotkeys — press = ON, release = OFF.
@@ -37,12 +48,18 @@ public enum Action: Equatable {
 }
 
 public extension Action {
+    var isWorkflow: Bool {
+        if case .workflow = self { return true }
+        return false
+    }
+
     /// A short, human-readable label for this action, for display in the settings UI.
     /// Pragmatic, not exhaustive — keystrokes render modifier symbols, media/mouse/space get
     /// friendly names, `shell`/`applescript`/`launch` are summarised.
     var displayLabel: String {
         switch self {
         case .keystroke(let keys):      return ActionLabel.keystroke(keys)
+        case .workflow(let intent):     return ActionLabel.workflow(intent)
         case .pushToTalk(let keys):     return ActionLabel.keystroke(keys) + " ⇅"
         case .media(let key):           return ActionLabel.media(key)
         case .mouse(let op):            return ActionLabel.mouse(op)
@@ -85,6 +102,7 @@ private enum ActionLabel {
         case "ctrl", "control", "lctrl", "lcontrol", "rctrl", "rcontrol":         return "⌃"
         case "opt", "option", "alt", "lopt", "loption", "lalt", "ropt", "roption", "ralt": return "⌥"
         case "shift", "lshift", "rshift":                                         return "⇧"
+        case "fn", "function":                                                     return "fn"
         default: return nil
         }
     }
@@ -117,6 +135,16 @@ private enum ActionLabel {
         case "voldown", "volumedown": return "Volume −"
         case "mute":              return "Mute"
         default:                  return key
+        }
+    }
+
+    static func workflow(_ intent: WorkflowIntent) -> String {
+        switch intent {
+        case .primary:            return "Primary"
+        case .cancel:             return "Cancel"
+        case .interrupt:          return "Interrupt"
+        case .dictationHold:      return "Dictation Hold"
+        case .toggleCodexChrome:  return "Codex ↔ Chrome"
         }
     }
 
@@ -168,12 +196,13 @@ private enum ActionLabel {
 
 extension Action: Decodable {
     private enum K: String, CodingKey {
-        case action, keys, key, op, app, url, command, script, to, delay, interval, value
+        case action, intent, keys, key, op, app, url, command, script, to, delay, interval, value
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: K.self)
         switch try c.decode(String.self, forKey: .action) {
         case "keystroke":   self = .keystroke(keys: try c.decode(String.self, forKey: .keys))
+        case "workflow":    self = .workflow(intent: try c.decode(WorkflowIntent.self, forKey: .intent))
         case "pushToTalk":  self = .pushToTalk(keys: try c.decode(String.self, forKey: .keys))
         case "media":       self = .media(key: try c.decode(String.self, forKey: .key))
         case "mouse":       self = .mouse(op: try c.decode(String.self, forKey: .op))
@@ -208,6 +237,9 @@ extension Action: Encodable {
         case .keystroke(let keys):
             try c.encode("keystroke", forKey: .action)
             try c.encode(keys, forKey: .keys)
+        case .workflow(let intent):
+            try c.encode("workflow", forKey: .action)
+            try c.encode(intent, forKey: .intent)
         case .pushToTalk(let keys):
             try c.encode("pushToTalk", forKey: .action)
             try c.encode(keys, forKey: .keys)

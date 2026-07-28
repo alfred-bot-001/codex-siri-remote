@@ -165,6 +165,10 @@ public final class Controller {
         engine.applyApp(bundleID: bundleID)
     }
 
+    /// Active mode after app-profile resolution. Exposed for diagnostics so a user can verify
+    /// which profile a frontmost bundle ID selected.
+    public var currentMode: String { engine.activeMode }
+
     /// Whether the active mode/layer (or its inherits chain) binds this event. Used to decide if a
     /// button needs long-press discrimination (only defer the tap if a `.hold*` binding exists).
     public func hasBinding(for eventKey: String) -> Bool {

@@ -30,8 +30,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// connect still announces itself. Guards against one physical connect showing several cards.
     private var lastConnectedState: Bool?
     private var gattDiagnostics: GATTDiagnostics?
-    /// Feeds the built-in mic into the "Siri Remote Mic" device when Siri isn't held (Phase 2b).
-    private var builtinMicFeeder: BuiltinMicFeeder?
     /// Mirror of the tune flag — the shake→highlight path is gated on this (see `applyTune`).
     private var findCursorEnabled = true
 
@@ -214,10 +212,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Initialize controllers
         let cursorController = CursorController()
+        let workflowExecutor = WorkflowIntentExecutorChain([
+            MacWorkflowIntentExecutor(effects: MacWorkflowEffectSink())
+        ])
 
         remoteInputHandler = RemoteInputHandler(
             cursorController: cursorController,
-            menuBarManager: menuBarManager
+            menuBarManager: menuBarManager,
+            workflowExecutor: workflowExecutor
         )
 
         // --- Config engine (SiriRemoteCore): config bindings override native button behavior;
@@ -243,7 +245,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // The launcher is summoned by an ordinary `.appWheel` hold binding, so it arrives here as an
         // action like any other — and inherits the progress card that every hold gets.
-        let actionExecutor = MacActionExecutor()
+        let actionExecutor = MacActionExecutor(workflowExecutor: workflowExecutor)
         let engineController = Controller(
             engine: MappingEngine(config: config),
             executor: actionExecutor
@@ -251,11 +253,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         controller = engineController
         remoteInputHandler?.controller = engineController
         appWatcher = AppWatcher { [weak engineController] bundleID in
-            rmDebug("🎯 frontmost app → \(bundleID)")
             engineController?.frontmostAppChanged(bundleID: bundleID)
+            rmDebug("🎯 frontmost app → \(bundleID), profile → \(engineController?.currentMode ?? "<none>")")
         }
         configWatcher = ConfigFileWatcher(url: ConfigStore.path) { [weak self] in
             let reloaded = ConfigStore.loadConfig()
+            // A workflow mapping can hold a real modifier (Fn) down. Release before replacing the
+            // mapping so config reload can never orphan the matching key-up.
+            self?.remoteInputHandler?.releaseWorkflowInputs()
             // If a sticky layer's mode was deleted/renamed in the edit, clear it — otherwise every
             // key would resolve against a missing layer (→ nil → all bindings dead) with no way to
             // pop it. Do this BEFORE reload so the pop lands on the old engine cleanly.
@@ -268,6 +273,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // next app switch. (AppWatcher only fires on activation *changes*.)
             if let bid = NSWorkspace.shared.frontmostApplication?.bundleIdentifier {
                 self?.controller?.frontmostAppChanged(bundleID: bid)
+                rmDebug("🎯 reloaded profile → \(self?.controller?.currentMode ?? "<none>") for \(bid)")
             }
             self?.settingsModel?.config = reloaded   // keep the Layout tab in sync on hot-reload
             self?.appWheel?.configure(apps: reloaded.settings.appWheel)   // and the launcher's app list
@@ -432,12 +438,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         
-        // Virtual-mic fallback (Phase 2b): keep the "Siri Remote Mic" device fed with the
-        // Mac's BUILT-IN microphone whenever the Siri button isn't held. Demand-gated on the
-        // plug-in's consumers notification — the mic is only hot while some app actually has
-        // the virtual device open. See BuiltinMicFeeder.swift for the feedback-avoidance rules.
-        builtinMicFeeder = BuiltinMicFeeder()
-        builtinMicFeeder?.start()
+        // Codex Remote V1 intentionally does not start the remote/virtual microphone path.
+        // Dictation is driven only by a synthetic Fn hold and uses the Mac's normal input device.
 
         // Start media key interceptor
         mediaKeyInterceptor = MediaKeyInterceptor()
@@ -562,9 +564,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         touchHandler?.stop()
         remoteDetector?.stopDetection()
         mediaKeyInterceptor?.stop()
-        // Drop producerActive in the shm ring so a consumer never waits on a dead producer
-        // (stop() is idempotent — cleanup runs on both termination paths).
-        builtinMicFeeder?.stop()
         RCDControl.restore()
     }
     

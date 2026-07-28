@@ -154,6 +154,7 @@ enum ActionVisual {
     private static func defaultSymbolName(_ action: Action) -> String {
         switch action {
         case .keystroke:   return "keyboard"
+        case .workflow:    return "switch.2"
         case .pushToTalk:  return "mic.fill"
         case .media:       return "playpause.fill"
         case .mouse:       return "cursorarrow.click"

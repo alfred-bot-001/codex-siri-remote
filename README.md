@@ -62,6 +62,36 @@ which also means an agent or a script can reconfigure the whole device by editin
 
 ---
 
+## Codex Remote V1 profile
+
+This fork adds a Track-A workflow action that stays independent of Codex internals. Copy
+[`examples/codex-remote-v1.jsonc`](examples/codex-remote-v1.jsonc) to
+`~/.config/siriremote/config.jsonc` to use the agreed A2854 layout:
+
+- click-ring: arrow keys; touch surface: upstream cursor, tap-to-click, and circular scroll;
+- Center: Return in Codex; upstream mouse click/drag in Chrome and other apps;
+- Back: one Escape; Play/Pause: two Escapes 200 ms apart;
+- hold Siri: real Fn-down/Fn-up for the active input method; TV: Codex/Chrome toggle.
+
+Volume and Mute are unbound so their native system behavior remains. Power is intentionally
+unbound. This V1 does not start the remote/virtual microphone path, modify Codex, connect to
+app-server, or edit `~/.codex/keybindings.json`. The full decision record and accepted approval
+mis-press risk are in [`DECISIONS.md`](DECISIONS.md).
+
+Software tests cannot prove that Doubao accepts a synthetic Fn event or that A2854 HID/touch input
+matches the simulated phases. Report software verification and A2854 hardware verification
+separately.
+
+Codex's shortcut page opens with `⌘-/`; commands such as submit, model/project selection, panels,
+and task navigation can be assigned there. The currently verified Codex Desktop build does not
+register configurable stop/interrupt/retry commands, so Play/Pause deliberately uses the
+two-Escape workflow instead. Do not bind Codex `globalDictationHold` (or another global Codex
+dictation command) to Fn: Fn belongs to the active input method in this profile. Any future
+remote-specific Codex hotkey must be recorded in [`DECISIONS.md`](DECISIONS.md) before changing the
+profile.
+
+---
+
 ## What it does
 
 - **Everything is remappable.** Buttons (Back/Menu, TV, Siri, Play/Pause, Mute, Volume ±, Power),
@@ -323,7 +353,8 @@ Suffix any button/ring key with:
 
 | `action`      | params                                | notes |
 |---------------|---------------------------------------|-------|
-| `keystroke`   | `keys` e.g. `"cmd+shift+["`            | modifiers cmd/ctrl/opt/shift (+ `l`/`r` variants like `rcmd`); a modifier-only string is a held hyperkey chord; keys: letters, digits, arrows, esc/enter/space/tab, punctuation |
+| `keystroke`   | `keys` e.g. `"cmd+shift+["`            | modifiers cmd/ctrl/opt/shift/fn (+ `l`/`r` variants like `rcmd`); a modifier-only string is a held hyperkey chord; keys: letters, digits, arrows, esc/enter/space/tab, punctuation |
+| `workflow`    | `intent`                              | `primary`, `cancel`, `interrupt`, `dictationHold`, or `toggleCodexChrome`; semantic seam used by Codex Remote V1 |
 | `media`       | `key`                                 | playpause/next/previous/volup/voldown/mute |
 | `mouse`       | `op`                                  | click/rightclick/move/scroll |
 | `launch`      | `app` and/or `url`                    | open an app or a URL |

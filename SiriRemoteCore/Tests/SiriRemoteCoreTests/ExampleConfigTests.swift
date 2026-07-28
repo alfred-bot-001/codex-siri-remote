@@ -24,6 +24,22 @@ final class ExampleConfigTests: XCTestCase {
         XCTAssertNotNil(config.modes[config.settings.defaultMode])
     }
 
+    func testCodexRemoteV1ExampleParsesAndRoutesProfiles() throws {
+        let url = exampleURL.deletingLastPathComponent()
+            .appendingPathComponent("codex-remote-v1.jsonc")
+        let config = try ConfigLoader.load(try String(contentsOf: url, encoding: .utf8))
+
+        XCTAssertEqual(config.appProfiles["com.openai.codex"], "codex")
+        XCTAssertEqual(config.appProfiles["com.google.Chrome"], "chrome")
+        XCTAssertEqual(config.appProfiles["default"], "global")
+        XCTAssertEqual(
+            config.modes["codex"]?.bindings["button.select"],
+            .workflow(intent: .primary)
+        )
+        XCTAssertNil(config.modes["chrome"]?.bindings["button.select"])
+        XCTAssertNil(config.modes["global"]?.bindings["button.power"])
+    }
+
     func testEveryReferencedModeExists() throws {
         let config = try ConfigLoader.load(try String(contentsOf: exampleURL, encoding: .utf8))
         for (app, mode) in config.appProfiles {

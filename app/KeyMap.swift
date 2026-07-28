@@ -66,6 +66,8 @@ enum KeyMap {
             return (CGKeyCode(kVK_Shift), flag(.maskShift, 0x2))          // NX_DEVICELSHIFTKEYMASK
         case "rshift":
             return (CGKeyCode(kVK_RightShift), flag(.maskShift, 0x4))      // NX_DEVICERSHIFTKEYMASK
+        case "fn", "function":
+            return (CGKeyCode(kVK_Function), .maskSecondaryFn)
         default:
             return nil
         }

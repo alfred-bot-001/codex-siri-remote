@@ -628,6 +628,7 @@ private struct ActionSlotEditor: View {
 
     enum Kind: String, CaseIterable, Identifiable {
         case none = "None", keystroke = "Keystroke", pushToTalk = "Push to talk",
+             workflow = "Workflow",
              media = "Media", mouse = "Mouse",
              launchApp = "Launch app", openURL = "Open URL", shell = "Shell",
              applescript = "AppleScript", space = "Switch space", brightness = "Brightness",
@@ -664,6 +665,7 @@ private struct ActionSlotEditor: View {
                 Text(Kind.none.rawValue).tag(Kind.none)
                 Section("Keys & media") {
                     Text(Kind.keystroke.rawValue).tag(Kind.keystroke)
+                    Text(Kind.workflow.rawValue).tag(Kind.workflow)
                     Text(Kind.pushToTalk.rawValue).tag(Kind.pushToTalk)
                     Text(Kind.repeatKey.rawValue).tag(Kind.repeatKey)
                     Text(Kind.media.rawValue).tag(Kind.media)
@@ -727,6 +729,8 @@ private struct ActionSlotEditor: View {
         case .openURL:
             TextField("https://…", text: $text).textFieldStyle(.roundedBorder).frame(width: 220)
                 .focused($focused).onSubmit(commit)
+        case .workflow:
+            enumPicker(WorkflowIntent.allCases.map(\.rawValue))
         case .media:  enumPicker(["playpause","next","previous","volup","voldown","mute"])
         case .mouse:  enumPicker(["click","rightclick","scroll","move"])
         case .space:  enumPicker(["left","right"])
@@ -759,6 +763,7 @@ private struct ActionSlotEditor: View {
         guard let a = action else { kind = .none; return }
         switch a {
         case .keystroke(let k):       kind = .keystroke; text = k
+        case .workflow(let intent):   kind = .workflow; pick = intent.rawValue
         case .pushToTalk(let k):      kind = .pushToTalk; text = k
         case .media(let k):           kind = .media; pick = k
         case .mouse(let op):          kind = .mouse; pick = op
@@ -784,6 +789,7 @@ private struct ActionSlotEditor: View {
     private func resetParamsForKind() {
         text = ""; altLaunch = ""; repDelay = 0.3; repInterval = 0.045; value = 0
         switch kind {
+        case .workflow:     pick = WorkflowIntent.primary.rawValue
         case .media:        pick = "playpause"
         case .mouse:        pick = "click"
         case .space:        pick = "left"
@@ -798,6 +804,7 @@ private struct ActionSlotEditor: View {
         switch kind {
         case .none:        return nil
         case .keystroke:   return text.isEmpty ? nil : .keystroke(keys: text)
+        case .workflow:    return WorkflowIntent(rawValue: pick).map(Action.workflow)
         case .pushToTalk:  return text.isEmpty ? nil : .pushToTalk(keys: text)
         case .repeatKey:   return text.isEmpty ? nil : .repeatKey(keys: text, delay: repDelay, interval: repInterval)
         case .media:       return .media(key: pick.isEmpty ? "playpause" : pick)

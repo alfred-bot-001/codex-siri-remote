@@ -17,12 +17,22 @@ final class MacActionExecutor: ActionExecutor {
     var onAppWheel: (() -> Void)?
 
     private let media = MediaController()
+    private let workflowExecutor: WorkflowIntentExecuting
+
+    init(workflowExecutor: WorkflowIntentExecuting) {
+        self.workflowExecutor = workflowExecutor
+    }
 
     func execute(_ action: Action, payload: EventPayload?) {
         rmDebug("⚙️ action: \(action)")
         switch action {
         case .keystroke(let keys):
             Keys.synthesize(keys)
+        case .workflow(let intent):
+            let context = FrontmostAppContext(
+                bundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            )
+            _ = workflowExecutor.execute(intent, phase: .tapped, context: context)
         case .media(let key):
             postMedia(key)
         case .mouse(let op):
@@ -76,6 +86,61 @@ final class MacActionExecutor: ActionExecutor {
             NSLog("[siriRemote] unknown media key '\(key)'"); return
         }
         media.sendMediaKey(type)
+    }
+}
+
+/// Production implementation of the workflow effect boundary.
+final class MacWorkflowEffectSink: WorkflowEffectSinking {
+    private var heldFunctionKey: KeyMap.Combo?
+
+    func tapKey(_ keys: String) {
+        Keys.synthesize(keys)
+    }
+
+    func beginFunctionHold() -> Bool {
+        guard heldFunctionKey == nil else { return true }
+        heldFunctionKey = Keys.holdBegin("fn")
+        return heldFunctionKey != nil
+    }
+
+    func endFunctionHold() {
+        guard let held = heldFunctionKey else { return }
+        heldFunctionKey = nil
+        Keys.holdEnd(held)
+    }
+
+    func schedule(after delay: TimeInterval, _ action: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+    }
+
+    @discardableResult
+    func activateApplication(bundleIdentifier: String) -> Bool {
+        if let running = NSRunningApplication.runningApplications(
+            withBundleIdentifier: bundleIdentifier
+        ).first {
+            let activated = running.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            if !activated {
+                NSLog("[siriRemote] failed to activate running app '\(bundleIdentifier)'")
+            }
+            return activated
+        }
+
+        guard let url = NSWorkspace.shared.urlForApplication(
+            withBundleIdentifier: bundleIdentifier
+        ) else {
+            NSLog("[siriRemote] app not found for bundle id '\(bundleIdentifier)'")
+            return false
+        }
+
+        NSWorkspace.shared.openApplication(
+            at: url,
+            configuration: NSWorkspace.OpenConfiguration()
+        ) { _, error in
+            if let error = error {
+                NSLog("[siriRemote] failed to open '\(bundleIdentifier)': \(error)")
+            }
+        }
+        return true
     }
 }
 

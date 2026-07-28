@@ -72,7 +72,7 @@ enum ConfigStore {
       // siriRemote config — edit and save; changes hot-reload live.
       // Event keys: ring.up ring.down ring.left ring.right
       //             swipe.up swipe.down swipe.left swipe.right tap.two
-      //             button.menu button.tv button.siri button.playPause
+      //             button.select button.menu button.tv button.siri button.playPause
       //             button.volumeUp button.volumeDown button.back
       //             button.nextTrack button.prevTrack button.mute button.power
       //   Long-press: add ".hold" to any button/ring key — e.g. button.menu.hold, ring.up.hold.
@@ -81,7 +81,7 @@ enum ConfigStore {
       //   Multi-tap: add ".double" or ".triple". Only the deepest count reached fires. Binding a
       //     ".triple" delays THAT key's double by one doubleTapWindow (a 3rd tap may still be
       //     coming); nothing else is affected and the plain tap is never delayed.
-      // Actions: keystroke(keys) media(key) mouse(op) launch(app|url)
+      // Actions: keystroke(keys) workflow(intent) media(key) mouse(op) launch(app|url)
       //          shell(command) applescript(script) mode(to) layer(to)
       //   layer(to): the bound key becomes a layer key — TAP it to toggle that mode sticky
       //     (persists until tapped again), or HOLD it and press other keys for momentary use.

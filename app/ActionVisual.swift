@@ -70,7 +70,7 @@ enum ActionVisual {
         if case .shell(let command) = action, let app = appName(fromOpenCommand: command) {
             return app
         }
-        return action.displayLabel
+        return ChineseUI.actionLabel(action)
     }
 
     // MARK: - App icons
@@ -170,6 +170,37 @@ enum ActionVisual {
         case .appWheel:    return "circle.grid.3x3.fill"
         case .repeatKey:   return "repeat"
         case .brightness:  return "sun.max.fill"
+        }
+    }
+}
+
+// Chinese presentation only. Action identifiers and config serialization stay unchanged.
+enum ChineseUI {
+    static func actionLabel(_ action: Action) -> String {
+        switch action {
+        case .media(let key):
+            return ["playpause":"播放 / 暂停", "next":"下一首", "previous":"上一首", "volup":"音量 +", "volumeup":"音量 +", "voldown":"音量 −", "volumedown":"音量 −", "mute":"静音"][key.lowercased()] ?? key
+        case .mouse(let op):
+            return ["click":"点击", "rightclick":"右键点击", "move":"移动", "scroll":"滚动"][op.lowercased()] ?? op
+        case .workflow(let intent):
+            switch intent {
+            case .primary: return "确认 / 发送"
+            case .cancel: return "取消"
+            case .interrupt: return "中断运行"
+            case .dictationHold: return "按住听写（Fn）"
+            case .toggleCodexChrome: return "切换 Codex / Chrome"
+            }
+        case .space(let direction): return direction < 0 ? "桌面 ←" : "桌面 →"
+        case .fullscreen: return "全屏"
+        case .minimize: return "最小化"
+        case .closeWindow: return "关闭窗口"
+        case .appWheel: return "应用轮盘"
+        case .mode(let name): return "模式：\(name)"
+        case .layer(let name): return "功能层：\(name)"
+        case .brightness(let value): return "亮度 \(Int(value * 100))%"
+        case .repeatKey(let keys, _, _) where ["lopt", "opt", "loption", "option"].contains(keys.lowercased()):
+            return "按住左 Option（语音）"
+        default: return action.displayLabel
         }
     }
 }

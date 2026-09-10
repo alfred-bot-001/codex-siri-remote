@@ -235,9 +235,9 @@ class RemoteInputHandler {
     /// hold — the same progress card, not a second style of its own. These are the two faces it
     /// shows: releasing now (a click) and holding on (pick the item up).
     private static let selectTapPresentation =
-        Config.Presentation(label: "Click", icon: "cursorarrow.click")
+        Config.Presentation(label: "点击", icon: "cursorarrow.click")
     private static let selectDragPresentation =
-        Config.Presentation(label: "Drag", icon: "hand.draw.fill")
+        Config.Presentation(label: "拖拽", icon: "hand.draw.fill")
 
     /// Sticky drag started (true) / dropped (false). The app pins a badge beside the pointer for
     /// the duration: the hold card is gone by then, so nothing else shows the mouse is still down.
@@ -1022,7 +1022,7 @@ class RemoteInputHandler {
             let threshold = deepest.delay + holdCancelGrace
             cancelAt = threshold
             hudStages.append((threshold, Action.mouse(op: "click"),
-                              Config.Presentation(label: "Cancel", icon: "arrow.uturn.backward"), true))
+                              Config.Presentation(label: "取消", icon: "arrow.uturn.backward"), true))
         }
         let startedAt = CACurrentMediaTime()
         armedHolds[buttonName] = ArmedHold(startedAt: startedAt, stages: armed, cancelAt: cancelAt)

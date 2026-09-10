@@ -114,7 +114,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 (2.0, .shell(command: "open -a 'Mission Control'"), nil),
                 (3.5, .launch(app: "Music", url: nil), nil),
                 (5.0, .shell(command: "pmset sleepnow"),
-                      Config.Presentation(label: "Sleep", icon: "moon.fill")),
+                      Config.Presentation(label: "睡眠", icon: "moon.fill")),
             ]
             func face(_ a: Action, _ p: Config.Presentation?) -> HoldProgressHUD.Face {
                 let v = ActionVisual.resolve(a, p)
@@ -124,11 +124,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             var demoStages = demo.map { HoldProgressHUD.Stage(threshold: $0.0, face: face($0.1, $0.2)) }
             // The escape hatch, exactly as the real path appends it.
             var cancelFace = face(.mouse(op: "click"),
-                                  Config.Presentation(label: "Cancel", icon: "arrow.uturn.backward"))
+                                  Config.Presentation(label: "取消", icon: "arrow.uturn.backward"))
             cancelFace.isCancel = true
             demoStages.append(.init(threshold: 6.0, face: cancelFace))
             hud.begin(base: face(.applescript(script: "tell application \"Music\" to playpause"),
-                                 Config.Presentation(label: "Play / Pause", icon: "playpause.fill")),
+                                 Config.Presentation(label: "播放 / 暂停", icon: "playpause.fill")),
                       stages: demoStages)
             DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) { hud.end(firedIndex: 4) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) { exit(0) }
@@ -233,7 +233,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.applyTune(tune)
             self?.scheduleTunePersist()   // write slider values back into config.jsonc (debounced)
         }
-        model.config = config   // publish the live config to the Settings "Layout" tab
+        model.config = config   // publish the live config to the Settings "按键配置" tab
         settingsModel = model
         let settingsWin = SettingsWindowController(model: model)
         settingsWindow = settingsWin
@@ -375,9 +375,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.cursorHighlighter?.flash()
         }
         touchHandler?.start()
-        // Focus-follows-cursor, restricted to fullscreen windows. Created before applyTune so the
+        // Remote-driven focus, restricted to visibly near-full-display apps. Created before applyTune so the
         // config's value is what switches it on — it starts disabled and never self-enables.
-        focusFollower = FocusFollowsCursor()
+        focusFollower = FocusFollowsCursor { [weak cursorController] in
+            cursorController?.focusMovementSnapshot()
+        }
         applyTune(model.tune)   // touchHandler + remoteInputHandler now exist — push the tuning
         remoteInputHandler?.onButtonActivity = { [weak self] in
             self?.touchHandler?.tryReconnectTrackpad()
@@ -394,7 +396,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                 // HUD only on an actual transition. The remote publishes several HID interfaces and
                 // this callback can run more than once per physical connect, which would otherwise
-                // stack up identical "Connected" cards.
+                // stack up identical "已连接" cards.
                 if self.lastConnectedState != connected {
                     self.lastConnectedState = connected
                     connected ? self.layerHUD?.showRemoteConnected()

@@ -24,6 +24,17 @@ class CursorController {
     var isDragging: Bool = false
     var isClickActive: Bool = false
 
+    // Multitouch writes from its callback thread; the focus policy reads on the main thread.
+    private let focusMovementLock = NSLock()
+    private var focusMovement: RemoteFocusMovement?
+    private var focusGeneration: UInt64 = 0
+
+    func focusMovementSnapshot() -> RemoteFocusMovement? {
+        focusMovementLock.lock()
+        defer { focusMovementLock.unlock() }
+        return focusMovement
+    }
+
     // Sub-pixel accumulator: a slow, precise move can be <1px/frame; accumulate the fraction so it
     // adds up to whole-pixel steps (true ~1px control) instead of being lost to rounding. The delta
     // passed in is already fully speed/accel-scaled by TouchHandler — no extra scaling here.
@@ -166,6 +177,14 @@ class CursorController {
         guard let event = CGEvent(mouseEventSource: nil, mouseType: eventType,
                                   mouseCursorPosition: target, mouseButton: .left) else { return }
         event.post(tap: .cghidEventTap)
+        // A clamped move at the display edge is not new input for focus purposes.
+        if target != pos {
+            focusMovementLock.lock()
+            focusGeneration &+= 1
+            focusMovement = RemoteFocusMovement(generation: focusGeneration, point: target,
+                time: ProcessInfo.processInfo.systemUptime, dragging: eventType == .leftMouseDragged)
+            focusMovementLock.unlock()
+        }
     }
 
     func performClick() {

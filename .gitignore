@@ -42,3 +42,9 @@ dist/build/
 # This directory contains narration, animation sources, app artwork, and final exports.
 # It is intentionally local-only and must never be published with the open-source repository.
 video/
+
+# Local localization previews and installation records
+localization/*.bundle/
+localization/*.png
+localization/INSTALLATION.md
+localization/last-backup.txt

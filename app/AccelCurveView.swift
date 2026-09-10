@@ -80,12 +80,12 @@ struct AccelCurveView: View {
             .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(.quaternary))
 
             HStack(spacing: 0) {
-                Label("slow circling", systemImage: "tortoise.fill")
+                Label("慢速画圈", systemImage: "tortoise.fill")
                 Spacer()
-                Text(String(format: "gain %.2f× → %.2f×", accelMin, accelMax))
+                Text(String(format: "增益 %.2f× → %.2f×", accelMin, accelMax))
                     .monospacedDigit()
                 Spacer()
-                Label("fast", systemImage: "hare.fill")
+                Label("快速", systemImage: "hare.fill")
             }
             .font(.system(size: 10))
             .foregroundStyle(.secondary)

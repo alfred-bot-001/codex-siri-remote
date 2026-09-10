@@ -1,0 +1,109 @@
+{
+  "appProfiles": {
+    "com.anthropic.claudefordesktop": "claude",
+    "com.google.Chrome": "chrome",
+    "com.openai.codex": "codex",
+    "default": "global"
+  },
+  "modes": {
+    "chrome": {
+      "button.menu": {
+        "action": "launch",
+        "app": "Claude"
+      },
+      "inherits": "global"
+    },
+    "claude": {
+      "button.menu": {
+        "action": "workflow",
+        "intent": "toggleCodexChrome"
+      },
+      "inherits": "global"
+    },
+    "codex": {
+      "button.playPause": {
+        "action": "keystroke",
+        "keys": "cmd+b"
+      },
+      "inherits": "global",
+      "ring.left": {
+        "action": "keystroke",
+        "keys": "cmd+["
+      },
+      "ring.right": {
+        "action": "keystroke",
+        "keys": "cmd+]"
+      }
+    },
+    "global": {
+      "button.menu": {
+        "action": "workflow",
+        "intent": "toggleCodexChrome"
+      },
+      "button.siri": {
+        "action": "repeatKey",
+        "delay": 0.3,
+        "interval": 0.045,
+        "keys": "lopt"
+      },
+      "button.tv": {
+        "action": "keystroke",
+        "keys": "return"
+      },
+      "button.tv.double": {
+        "action": "workflow",
+        "intent": "interrupt"
+      },
+      "ring.down": {
+        "action": "keystroke",
+        "keys": "down"
+      },
+      "ring.left": {
+        "action": "keystroke",
+        "keys": "left"
+      },
+      "ring.right": {
+        "action": "keystroke",
+        "keys": "right"
+      },
+      "ring.up": {
+        "action": "keystroke",
+        "keys": "up"
+      }
+    }
+  },
+  "settings": {
+    "accelHighSpeed": 0.06,
+    "accelLowSpeed": 0.008,
+    "accelMax": 2.6,
+    "accelMin": 0.897653903903904,
+    "appWheel": [],
+    "circularScroll": {
+      "accelCurve": 1,
+      "accelHighSpeed": 0.07,
+      "accelLowSpeed": 0.01,
+      "accelMax": 1.3,
+      "accelMin": 1,
+      "enabled": true,
+      "invert": true,
+      "minRadius": 0.35,
+      "pixelsPerRadian": 30,
+      "scrollEase": 0.3,
+      "startThreshold": 0.5316800458715596
+    },
+    "clickRiseThreshold": 0.1,
+    "cursorDeadzone": 0.009487719941348973,
+    "cursorSpeed": 1.5084288990825687,
+    "defaultMode": "global",
+    "doubleTapWindow": 0.3,
+    "findCursorEnabled": true,
+    "focusFollowsCursor": false,
+    "holdCancelGrace": 1,
+    "holdThreshold": 0.5,
+    "holdThreshold2": 1,
+    "holdThreshold3": 1.6,
+    "pressMoveMax": 0.025,
+    "spacesModeWindow": 5,
+    "swipeVelocity": 0.5
+  }
+}

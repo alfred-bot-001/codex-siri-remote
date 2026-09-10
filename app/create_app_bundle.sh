@@ -70,7 +70,7 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>zh-Hans</string>
 	<key>CFBundleExecutable</key>
 	<string>$APP_NAME</string>
 	<key>CFBundleIdentifier</key>
@@ -96,13 +96,13 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" <<EOF
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>HyperVibe needs Bluetooth access to connect to your Siri Remote trackpad.</string>
+	<string>HyperVibe 需要蓝牙权限，以连接 Siri Remote 遥控器。</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>HyperVibe needs Bluetooth access to connect to your Siri Remote trackpad.</string>
+	<string>HyperVibe 需要蓝牙权限，以连接 Siri Remote 遥控器。</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>siriRemote sends AppleScript to apps you bind (e.g. play/pause Apple Music) when the remote's buttons are pressed.</string>
+	<string>按下遥控器按键时，siriRemote 会向已配置的应用发送自动化指令。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>HyperVibe plays your Mac's built-in microphone through the "Siri Remote Mic" device whenever the remote isn't transmitting voice, so apps using that device always hear live audio.</string>
+	<string>启用虚拟麦克风功能后，HyperVibe 会在遥控器未传输语音时使用 Mac 内置麦克风作为备用输入。</string>
 </dict>
 </plist>
 EOF

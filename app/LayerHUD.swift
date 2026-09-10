@@ -44,27 +44,27 @@ final class LayerHUD {
 
     /// Switched INTO a named layer (sticky).
     func showOn(_ layerName: String) {
-        show(symbol: "square.stack.3d.up.fill", title: layerName, subtitle: "Layer active",
+        show(symbol: "square.stack.3d.up.fill", title: layerName, subtitle: "功能层状态",
              tint: .controlAccentColor)
     }
 
     /// Switched back to the base layer. Same subject, outline + dimmed rather than a slash: a slash
     /// would read as "layers are off", which is exactly the wrong idea.
     func showOff(_ layerName: String) {
-        show(symbol: "square.stack.3d.up", title: "Base", subtitle: "Layer active",
+        show(symbol: "square.stack.3d.up", title: "基础模式", subtitle: "功能层状态",
              tint: .secondaryLabelColor)
     }
 
     /// The remote connected: filled remote, green — matching the green dot in Settings.
     func showRemoteConnected() {
-        show(symbol: "appletvremote.gen4.fill", title: "Siri Remote", subtitle: "Connected",
+        show(symbol: "appletvremote.gen4.fill", title: "Siri Remote", subtitle: "已连接",
              tint: .systemGreen)
     }
 
     /// The remote dropped: same subject, outline + dimmed, so the state reads at a glance without
     /// changing what the icon depicts. (There is no `appletvremote.gen4.slash` symbol to use.)
     func showRemoteDisconnected() {
-        show(symbol: "appletvremote.gen4", title: "Siri Remote", subtitle: "Disconnected",
+        show(symbol: "appletvremote.gen4", title: "Siri Remote", subtitle: "已断开",
              tint: .secondaryLabelColor)
     }
 

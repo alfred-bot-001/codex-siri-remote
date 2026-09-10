@@ -26,7 +26,7 @@ final class SettingsWindowController {
             // Layout tab (wider) is selected vs. the Tuning tab.
             hosting.sizingOptions = [.preferredContentSize]
             let win = NSWindow(contentViewController: hosting)
-            win.title = "siriRemote Settings"
+            win.title = "siriRemote 中文设置"
             win.styleMask = [.titled, .closable, .resizable, .fullSizeContentView]
             win.titlebarAppearsTransparent = true
             win.titleVisibility = .hidden

@@ -103,15 +103,15 @@ struct LayoutView: View {
             HStack(spacing: 8) {
                 Image(systemName: "square.stack.3d.up.fill")
                     .font(.system(size: 11)).foregroundStyle(editLayer == nil ? .secondary : Color.accentColor)
-                Text("Editing").font(.system(size: 11.5)).foregroundStyle(.secondary)
+                Text("编辑范围").font(.system(size: 11.5)).foregroundStyle(.secondary)
                 Picker("", selection: $editLayer) {
-                    Text("base bindings").tag(String?.none)
-                    ForEach(layerNames, id: \.self) { Text("layer \($0)").tag(String?.some($0)) }
+                    Text("基础按键").tag(String?.none)
+                    ForEach(layerNames, id: \.self) { Text("功能层 \($0)").tag(String?.some($0)) }
                 }
                 .labelsHidden().fixedSize()
                 Text(editLayer == nil
-                     ? "for \(mode == config.defaultModeName ? "Global" : mode)"
-                     : "→ what layer \(editLayer!) does in \(mode == config.defaultModeName ? "Global" : mode)")
+                     ? "适用于 \(mode == config.defaultModeName ? "全局" : mode)"
+                     : "→ \(mode == config.defaultModeName ? "全局" : mode) 中的 \(editLayer!) 功能层")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                 Spacer()
             }
@@ -124,12 +124,12 @@ struct LayoutView: View {
 
     private var head: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("LAYOUT")
+            Text("按键配置")
                 .font(.system(size: 11, weight: .heavy)).tracking(1.4)
                 .foregroundStyle(.secondary)
-            Text("What every button does")
+            Text("每个按键的功能")
                 .font(.system(size: 22, weight: .bold))
-            Text("Pick an app from the hub. Anything not set for that app falls back to Global, then to the remote's native behavior.")
+            Text("选择应用后查看或修改按键。应用未单独设置的功能沿用全局配置；全局未设置时使用系统默认功能。")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -148,7 +148,7 @@ struct LayoutView: View {
             return chipTitle(a, apps: apps, isDefault: false) < chipTitle(b, apps: apps, isDefault: false)
         }
         return HStack(spacing: 8) {
-            Text("APP")
+            Text("应用")
                 .font(.system(size: 11, weight: .heavy)).tracking(1)
                 .foregroundStyle(.secondary)
             ForEach(modes, id: \.self) { m in
@@ -201,7 +201,7 @@ struct LayoutView: View {
                     .frame(width: 22, height: 22)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.25), lineWidth: 1))
-                Text("Add…").font(.system(size: 13))
+                Text("添加…").font(.system(size: 13))
             }
             .padding(.leading, 9).padding(.trailing, 13).padding(.vertical, 7)
             .foregroundStyle(.secondary)
@@ -216,31 +216,31 @@ struct LayoutView: View {
     private var addPopover: some View {
         VStack(alignment: .leading, spacing: 12) {
             Picker("", selection: $addIsLayer) {
-                Text("App profile").tag(false)
-                Text("Layer").tag(true)
+                Text("应用配置").tag(false)
+                Text("功能层").tag(true)
             }.pickerStyle(.segmented).labelsHidden()
             if addIsLayer {
-                TextField("Layer name (e.g. tvLayer)", text: $addName).textFieldStyle(.roundedBorder)
-                Text("A layer is a mode you activate by holding a key (the Layer action). It inherits Global.")
+                TextField("功能层名称（例如 tvLayer）", text: $addName).textFieldStyle(.roundedBorder)
+                Text("功能层可通过按住指定按键临时启用，并继承全局配置。")
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             } else {
                 HStack(spacing: 6) {
-                    TextField("App bundle id (e.g. com.apple.Notes)", text: $addName)
+                    TextField("应用标识（例如 com.apple.Notes）", text: $addName)
                         .textFieldStyle(.roundedBorder)
                     Button { chooseApp() } label: { Image(systemName: "folder") }
-                        .help("Choose an app — its bundle id is filled in automatically")
+                        .help("选择应用，自动填入应用标识")
                 }
                 HStack(spacing: 6) {
-                    Text("uses mode").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text("使用配置").font(.system(size: 11)).foregroundStyle(.secondary)
                     Picker("", selection: $addTargetMode) {
-                        ForEach(sortedModeNames, id: \.self) { Text($0).tag($0) }
+                        ForEach(sortedModeNames, id: \.self) { Text($0 == config.defaultModeName ? "全局" : $0).tag($0) }
                     }.labelsHidden().frame(width: 130)
                 }
             }
             HStack {
                 Spacer()
-                Button("Cancel") { showAdd = false }
-                Button("Create") { createAdd() }
+                Button("取消") { showAdd = false }
+                Button("创建") { createAdd() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(addName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -255,7 +255,7 @@ struct LayoutView: View {
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.prompt = "Choose"
+        panel.prompt = "选择"
         if panel.runModal() == .OK, let url = panel.url, let id = Bundle(url: url)?.bundleIdentifier {
             addName = id
         }
@@ -278,9 +278,9 @@ struct LayoutView: View {
 
     private var legend: some View {
         HStack(spacing: 16) {
-            legendItem(.accentColor, "Custom in this app")
-            legendItem(.secondary, "Global / Inherited")
-            legendItem(Color.secondary.opacity(0.55), "System / native")
+            legendItem(.accentColor, "本应用自定义")
+            legendItem(.secondary, "全局 / 继承")
+            legendItem(Color.secondary.opacity(0.55), "系统默认")
         }
         .font(.system(size: 11.5)).foregroundStyle(.secondary)
         .padding(.horizontal, 26).padding(.vertical, 6)
@@ -306,7 +306,7 @@ struct LayoutView: View {
                     selectedKey = key       // click a remote button → open its editor row + keep it lit
                     highlightedKey = key
                 })
-                Text("Aluminum Siri Remote (3rd gen). Click an input to edit it.")
+                Text("第三代铝制 Siri Remote，点击右侧按键即可编辑。")
                     .font(.system(size: 11.5)).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -399,7 +399,7 @@ struct LayoutView: View {
     // MARK: - Foot
 
     private var foot: some View {
-        Text("Click any input to edit its Tap / Double-tap / Hold actions — changes save to config.jsonc and apply live.")
+        Text("点击按键可编辑单击、双击和长按功能；修改会自动保存并立即生效。")
             .font(.system(size: 11.5)).foregroundStyle(.secondary)
             .padding(.horizontal, 26).padding(.top, 6).padding(.bottom, 18)
     }
@@ -412,12 +412,12 @@ struct LayoutView: View {
     private func resolve(_ key: String) -> Resolved {
         if let res = config.resolveBinding(key, in: mode) {
             if res.sourceMode == mode {
-                return Resolved(label: res.action.displayLabel, kind: .custom, tag: "Custom")
+                return Resolved(label: ChineseUI.actionLabel(res.action), kind: .custom, tag: "自定义")
             }
-            let tag = res.sourceMode == config.defaultModeName ? "Global" : "Inherited"
-            return Resolved(label: res.action.displayLabel, kind: .inherited, tag: tag)
+            let tag = res.sourceMode == config.defaultModeName ? "全局" : "继承"
+            return Resolved(label: ChineseUI.actionLabel(res.action), kind: .inherited, tag: tag)
         }
-        return Resolved(label: Self.nativeLabel(key), kind: .system, tag: "System")
+        return Resolved(label: Self.nativeLabel(key), kind: .system, tag: "系统")
     }
 
     // MARK: - Static tables
@@ -431,48 +431,48 @@ struct LayoutView: View {
     private struct InputGroup { let name: String; let rows: [InputRow] }
 
     private static let groups: [InputGroup] = [
-        InputGroup(name: "Clickpad", rows: [
-            InputRow(key: "ring.up",      name: "Ring ↑"),
-            InputRow(key: "ring.up.hold", name: "Ring ↑ · hold"),
-            InputRow(key: "ring.down",    name: "Ring ↓"),
-            InputRow(key: "ring.left",    name: "Ring ←"),
-            InputRow(key: "ring.right",   name: "Ring →"),
-            InputRow(key: "select",       name: "Center click"),
-            InputRow(key: "touch",        name: "Touch surface"),
+        InputGroup(name: "触控圆盘", rows: [
+            InputRow(key: "ring.up",      name: "方向环 ↑"),
+            InputRow(key: "ring.up.hold", name: "方向环 ↑ · 长按"),
+            InputRow(key: "ring.down",    name: "方向环 ↓"),
+            InputRow(key: "ring.left",    name: "方向环 ←"),
+            InputRow(key: "ring.right",   name: "方向环 →"),
+            InputRow(key: "select",       name: "中心按压"),
+            InputRow(key: "touch",        name: "触控表面"),
         ]),
-        InputGroup(name: "Buttons", rows: [
-            InputRow(key: "button.siri",       name: "Siri / voice"),
-            InputRow(key: "button.playPause",  name: "Play / Pause"),
-            InputRow(key: "button.mute",       name: "Mute"),
-            InputRow(key: "button.volumeUp",   name: "Volume +"),
-            InputRow(key: "button.volumeDown", name: "Volume −"),
-            InputRow(key: "button.tv",         name: "TV"),
+        InputGroup(name: "按键", rows: [
+            InputRow(key: "button.siri",       name: "Siri / 语音"),
+            InputRow(key: "button.playPause",  name: "播放 / 暂停"),
+            InputRow(key: "button.mute",       name: "静音"),
+            InputRow(key: "button.volumeUp",   name: "音量 +"),
+            InputRow(key: "button.volumeDown", name: "音量 −"),
+            InputRow(key: "button.tv",         name: "TV / 发送"),
             // The physical Back button (‹) reports HID usage 0x86 → config key `button.menu`.
-            InputRow(key: "button.menu",       name: "Back"),
-            InputRow(key: "button.power",      name: "Power"),
+            InputRow(key: "button.menu",       name: "返回"),
+            InputRow(key: "button.power",      name: "电源"),
         ]),
-        InputGroup(name: "Gestures", rows: [
-            InputRow(key: "swipe.up",    name: "Swipe ↑"),
-            InputRow(key: "swipe.down",  name: "Swipe ↓"),
-            InputRow(key: "swipe.left",  name: "Swipe ←"),
-            InputRow(key: "swipe.right", name: "Swipe →"),
-            InputRow(key: "tap.two",     name: "Two-finger tap"),
+        InputGroup(name: "手势", rows: [
+            InputRow(key: "swipe.up",    name: "上滑 ↑"),
+            InputRow(key: "swipe.down",  name: "下滑 ↓"),
+            InputRow(key: "swipe.left",  name: "左滑 ←"),
+            InputRow(key: "swipe.right", name: "右滑 →"),
+            InputRow(key: "tap.two",     name: "双指轻点"),
         ]),
     ]
 
     /// The remote's native behavior text for an unbound key.
     private static func nativeLabel(_ key: String) -> String {
         switch key {
-        case "select":            return "Click"
-        case "touch":             return "Move · Scroll · Swipe"
+        case "select":            return "点击"
+        case "touch":             return "移动 · 滚动 · 滑动"
         case "button.siri":       return "Siri"
-        case "button.playPause":  return "Play / Pause"
-        case "button.mute":       return "Mute"
-        case "button.volumeUp":   return "Volume +"
-        case "button.volumeDown": return "Volume −"
-        case "button.tv":         return "Control Center"
-        case "button.menu":       return "Back"
-        case "button.power":      return "Sleep / Wake"
+        case "button.playPause":  return "播放 / 暂停"
+        case "button.mute":       return "静音"
+        case "button.volumeUp":   return "音量 +"
+        case "button.volumeDown": return "音量 −"
+        case "button.tv":         return "控制中心"
+        case "button.menu":       return "返回"
+        case "button.power":      return "睡眠 / 唤醒"
         default:                  return "—"   // ring directions (incl. .hold), swipes, tap.two
         }
     }
@@ -480,7 +480,7 @@ struct LayoutView: View {
     // MARK: - Chip labels
 
     private func chipTitle(_ m: String, apps: [String: [String]], isDefault: Bool) -> String {
-        if isDefault { return "Global" }
+        if isDefault { return "全局" }
         if let first = apps[m]?.first { return Self.friendlyApp(first) }
         return m.prefix(1).uppercased() + m.dropFirst()
     }
@@ -497,12 +497,14 @@ struct LayoutView: View {
             "com.apple.Safari": "Safari",
             "com.apple.TV": "Apple TV",
             "com.apple.finder": "Finder",
-            "com.apple.mail": "Mail",
+            "com.apple.mail": "邮件",
             "com.microsoft.VSCode": "VS Code",
             "com.google.Chrome": "Chrome",
+            "com.openai.codex": "Codex",
+            "com.anthropic.claudefordesktop": "Claude",
             "com.apple.iWork.Keynote": "Keynote",
-            "com.apple.Preview": "Preview",
-            "com.apple.systempreferences": "System Settings",
+            "com.apple.Preview": "预览",
+            "com.apple.systempreferences": "系统设置",
         ]
         if let n = known[id] { return n }
         let last = id.split(separator: ".").last.map(String.init) ?? id
@@ -540,20 +542,20 @@ struct LayoutView: View {
     private func slots(for base: String) -> [Slot] {
         if base.hasPrefix("ring.") || base.hasPrefix("button.") {
             return [
-                Slot(slotKey: base,             label: "Tap"),
-                Slot(slotKey: base + ".double", label: "Double-tap"),
+                Slot(slotKey: base,             label: "单击"),
+                Slot(slotKey: base + ".double", label: "双击"),
                 // Binding this delays THIS key's double-tap by one doubleTapWindow — the double can
                 // no longer fire on its own press, because a third tap may still be coming. Nothing
                 // else is affected, and the plain tap is never delayed by either.
-                Slot(slotKey: base + ".triple", label: "Triple-tap"),
-                Slot(slotKey: base + ".hold",   label: "Hold"),
-                Slot(slotKey: base + ".hold2",  label: "Hold ··"),
-                Slot(slotKey: base + ".hold3",  label: "Hold ···"),
+                Slot(slotKey: base + ".triple", label: "三击"),
+                Slot(slotKey: base + ".hold",   label: "长按"),
+                Slot(slotKey: base + ".hold2",  label: "二段长按"),
+                Slot(slotKey: base + ".hold3",  label: "三段长按"),
             ]
         }
         // Swipes / two-finger tap are one-shot gesture events — a single action, no hold/double.
         if base.hasPrefix("swipe.") || base == "tap.two" {
-            return [Slot(slotKey: base, label: "Action")]
+            return [Slot(slotKey: base, label: "操作")]
         }
         return []
     }
@@ -565,8 +567,8 @@ struct LayoutView: View {
     static func inputName(_ key: String) -> String {
         for g in groups { for r in g.rows where r.key == key { return r.name } }
         switch key {
-        case "ring.up": return "Ring ↑"; case "ring.down": return "Ring ↓"
-        case "ring.left": return "Ring ←"; case "ring.right": return "Ring →"
+        case "ring.up": return "方向环 ↑"; case "ring.down": return "方向环 ↓"
+        case "ring.left": return "方向环 ←"; case "ring.right": return "方向环 →"
         default: return key
         }
     }
@@ -576,13 +578,13 @@ struct LayoutView: View {
         let theSlots = slots(for: base)
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text("EDIT").font(.system(size: 11, weight: .heavy)).tracking(1).foregroundStyle(.secondary)
+                Text("编辑").font(.system(size: 11, weight: .heavy)).tracking(1).foregroundStyle(.secondary)
                 Text(Self.inputName(base)).font(.system(size: 13, weight: .semibold))
                 if let layer = editLayer {
-                    Text("· layer \(layer)").font(.system(size: 11, weight: .semibold))
+                    Text("· 功能层 \(layer)").font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color.accentColor)
                 }
-                Text("in \(mode == config.defaultModeName ? "Global" : mode)")
+                Text("适用于 \(mode == config.defaultModeName ? "全局" : mode)")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                 Spacer()
                 Button { selectedKey = nil } label: {
@@ -593,7 +595,7 @@ struct LayoutView: View {
             .background(Color.secondary.opacity(0.06))
 
             if theSlots.isEmpty {
-                Text("This input is handled natively and isn't remappable here.")
+                Text("此输入由系统处理，无法在这里重新配置。")
                     .font(.system(size: 12)).foregroundStyle(.secondary).padding(16)
             } else {
                 ForEach(Array(theSlots.enumerated()), id: \.element.slotKey) { idx, slot in
@@ -627,14 +629,14 @@ private struct ActionSlotEditor: View {
     let onChange: (Action?) -> Void
 
     enum Kind: String, CaseIterable, Identifiable {
-        case none = "None", keystroke = "Keystroke", pushToTalk = "Push to talk",
-             workflow = "Workflow",
-             media = "Media", mouse = "Mouse",
-             launchApp = "Launch app", openURL = "Open URL", shell = "Shell",
-             applescript = "AppleScript", space = "Switch space", brightness = "Brightness",
-             layer = "Layer", mode = "Mode", repeatKey = "Repeat key",
-             fullscreen = "Full screen", minimize = "Minimise",
-             closeWindow = "Close window", appWheel = "App wheel"
+        case none = "无", keystroke = "键盘快捷键", pushToTalk = "按住通话（切换）",
+             workflow = "工作流程",
+             media = "媒体控制", mouse = "鼠标",
+             launchApp = "打开应用", openURL = "打开网址", shell = "命令行",
+             applescript = "AppleScript", space = "切换桌面", brightness = "亮度",
+             layer = "功能层", mode = "配置模式", repeatKey = "持续按键",
+             fullscreen = "全屏", minimize = "最小化",
+             closeWindow = "关闭窗口", appWheel = "应用轮盘"
         var id: String { rawValue }
     }
 
@@ -663,7 +665,7 @@ private struct ActionSlotEditor: View {
                 if newKind == .none || build() != nil { commit() }
             })) {
                 Text(Kind.none.rawValue).tag(Kind.none)
-                Section("Keys & media") {
+                Section("按键与媒体") {
                     Text(Kind.keystroke.rawValue).tag(Kind.keystroke)
                     Text(Kind.workflow.rawValue).tag(Kind.workflow)
                     Text(Kind.pushToTalk.rawValue).tag(Kind.pushToTalk)
@@ -672,15 +674,15 @@ private struct ActionSlotEditor: View {
                     Text(Kind.mouse.rawValue).tag(Kind.mouse)
                     Text(Kind.brightness.rawValue).tag(Kind.brightness)
                 }
-                Section("Apps & web") {
+                Section("应用与网页") {
                     Text(Kind.launchApp.rawValue).tag(Kind.launchApp)
                     Text(Kind.openURL.rawValue).tag(Kind.openURL)
                 }
-                Section("Scripting") {
+                Section("脚本") {
                     Text(Kind.shell.rawValue).tag(Kind.shell)
                     Text(Kind.applescript.rawValue).tag(Kind.applescript)
                 }
-                Section("Modes & layers") {
+                Section("模式与功能层") {
                     Text(Kind.mode.rawValue).tag(Kind.mode)
                     Text(Kind.layer.rawValue).tag(Kind.layer)
                     Text(Kind.space.rawValue).tag(Kind.space)
@@ -698,15 +700,15 @@ private struct ActionSlotEditor: View {
     @ViewBuilder private var param: some View {
         switch kind {
         case .none:
-            Text("does nothing").foregroundStyle(.secondary).font(.system(size: 12))
+            Text("不执行操作").foregroundStyle(.secondary).font(.system(size: 12))
         case .fullscreen:
-            Text("toggles the frontmost window").foregroundStyle(.secondary).font(.system(size: 12))
+            Text("切换当前窗口的全屏状态").foregroundStyle(.secondary).font(.system(size: 12))
         case .minimize:
-            Text("minimises the frontmost window").foregroundStyle(.secondary).font(.system(size: 12))
+            Text("最小化当前窗口").foregroundStyle(.secondary).font(.system(size: 12))
         case .closeWindow:
-            Text("presses the window's red close button").foregroundStyle(.secondary).font(.system(size: 12))
+            Text("点击窗口左上角的关闭按钮").foregroundStyle(.secondary).font(.system(size: 12))
         case .appWheel:
-            Text("opens the radial launcher (settings.appWheel)").foregroundStyle(.secondary).font(.system(size: 12))
+            Text("打开应用轮盘").foregroundStyle(.secondary).font(.system(size: 12))
         case .keystroke, .repeatKey:
             TextField("cmd+shift+t", text: $text).textFieldStyle(.roundedBorder).frame(width: 170)
                 .focused($focused).onSubmit(commit)
@@ -714,17 +716,17 @@ private struct ActionSlotEditor: View {
             HStack(spacing: 8) {
                 TextField("cmd+shift+t", text: $text).textFieldStyle(.roundedBorder).frame(width: 170)
                     .focused($focused).onSubmit(commit)
-                Text("fires on press AND on release")
+                Text("按下和松开时各触发一次")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
         case .shell:
-            TextField("shell command", text: $text).textFieldStyle(.roundedBorder).frame(width: 240)
+            TextField("命令行内容", text: $text).textFieldStyle(.roundedBorder).frame(width: 240)
                 .focused($focused).onSubmit(commit)
         case .applescript:
-            TextField("AppleScript source", text: $text).textFieldStyle(.roundedBorder).frame(width: 240)
+            TextField("AppleScript 脚本", text: $text).textFieldStyle(.roundedBorder).frame(width: 240)
                 .focused($focused).onSubmit(commit)
         case .launchApp:
-            TextField("App name (e.g. Safari)", text: $text).textFieldStyle(.roundedBorder).frame(width: 200)
+            TextField("应用名称（例如 Safari）", text: $text).textFieldStyle(.roundedBorder).frame(width: 200)
                 .focused($focused).onSubmit(commit)
         case .openURL:
             TextField("https://…", text: $text).textFieldStyle(.roundedBorder).frame(width: 220)
@@ -738,7 +740,7 @@ private struct ActionSlotEditor: View {
         case .layer:
             HStack(spacing: 8) {
                 enumPicker(modeNames.isEmpty ? ["global"] : modeNames)
-                Text("tap = toggle · hold = momentary")
+                Text("单击切换 · 按住临时启用")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
         case .brightness:
@@ -752,9 +754,21 @@ private struct ActionSlotEditor: View {
         }
     }
 
+    private func optionLabel(_ value: String) -> String {
+        switch kind {
+        case .workflow:
+            if let intent = WorkflowIntent(rawValue: value) { return ChineseUI.actionLabel(.workflow(intent: intent)) }
+        case .media: return ChineseUI.actionLabel(.media(key: value))
+        case .mouse: return ChineseUI.actionLabel(.mouse(op: value))
+        case .space: return value == "left" ? "向左" : "向右"
+        default: break
+        }
+        return value == "global" ? "全局" : value
+    }
+
     private func enumPicker(_ options: [String]) -> some View {
         Picker("", selection: Binding(get: { pick }, set: { pick = $0; commit() })) {
-            ForEach(options, id: \.self) { Text($0).tag($0) }
+            ForEach(options, id: \.self) { Text(optionLabel($0)).tag($0) }
         }
         .labelsHidden().frame(width: 130)
     }

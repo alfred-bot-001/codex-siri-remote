@@ -56,9 +56,9 @@ enum LaunchAtLogin {
         case .enabled:  return nil
         case .disabled: return nil
         case .requiresApproval:
-            return "Approve HyperVibe in System Settings → General → Login Items to finish enabling."
+            return "请前往「系统设置 → 通用 → 登录项」允许 HyperVibe，完成启用。"
         case .unavailable:
-            return "Unavailable — run the packaged HyperVibe.app (not the bare ./HyperVibe binary)."
+            return "暂不可用，请运行打包后的 HyperVibe.app 应用。"
         }
     }
 

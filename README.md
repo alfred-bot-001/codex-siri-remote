@@ -19,6 +19,14 @@
 
 ---
 
+## 此 fork：简体中文界面、微信输入法与 Claude
+
+本仓库在 [Codex Siri Remote](https://github.com/luobosibing2/codex-siri-remote) 基础上增加简体中文界面，并修复启动或普通鼠标移动导致应用意外抢占前台的问题。
+
+推荐配置为 [`examples/wechat-claude.jsonc`](examples/wechat-claude.jsonc)：语音键按住左 Option 触发微信输入法，返回键依次切换 Codex → Chrome → Claude → Codex，TV 键单击发送 Return。自动聚焦默认关闭。详细构建、配置安装及权限恢复说明见 [`localization/README.md`](localization/README.md)。
+
+下文 V1 键位表描述保留的原版 `examples/codex-remote-v1.jsonc`，其 Fn 语音键和双应用切换与上述推荐配置不同。
+
 ## Codex Remote V1：中文快速开始
 
 这个分叉把第三代 Siri Remote 变成 Codex Desktop 的手持控制器。它优先采用
@@ -95,7 +103,7 @@ system_profiler SPBluetoothDataType | sed -n '/siriremote:/,/Services:/p'
 克隆公开仓库后运行：
 
 ```sh
-git clone https://github.com/luobosibing2/codex-siri-remote.git
+git clone https://github.com/alfred-bot-001/codex-siri-remote.git
 cd codex-siri-remote/app
 ./build.sh
 ./create_app_bundle.sh
@@ -639,25 +647,19 @@ so `.hold3` may perfectly well fire before `.hold`; the suffix is only a name.
 `holdCancelGrace` is measured from the deepest stage that key actually binds, so a key whose deepest
 hold is 0.5s does not sit through seconds of dead zone waiting to cancel.
 
-### Focus follows cursor (apps that fill a display)
+### Focus follows remote cursor (apps that fill a display)
 
-`"focusFollowsCursor": true` makes the app under the cursor frontmost once the pointer rests on it
-(~0.15s), so a keystroke binding lands where you are pointing instead of wherever you last clicked —
-scroll a browser on one display, press a button, and the shortcut goes to that browser.
+`"focusFollowsCursor": true` allows a fresh cursor movement emitted by the remote to
+focus the app under the pointer after it rests for approximately 0.15 seconds. Startup,
+ordinary mouse movement, and old remote positions cannot arm a focus request. Each movement
+can produce only one request; dragging, mouse takeover, expired input, or a foreground-app
+change while waiting cancels it.
 
-**It only focuses an app whose windows already cover ≥90% of that display**, and that restriction is
-the feature working, not a gap. macOS has no public way to give an app keyboard focus without also
-raising it, so an unrestricted focus-follows-mouse would reshuffle your window stack every time the
-pointer crossed something. An app that already fills a display has nothing to disturb — raising it
-changes nothing you can see. Overlapping or half-screen windows are left alone.
+The candidate app must already visibly cover at least 90% of the display. Coverage excludes
+gaps and areas covered by other apps, and counts overlapping windows only once. If macOS
+refuses normal activation, HyperVibe does not force the app to the front through Accessibility.
 
-Note it is *fills a display*, not *is fullscreen*. A maximised window with the menu bar still showing
-is just as safe, and is what most people actually run; a literal fullscreen test matched none of the
-author's own windows. Coverage is measured against the union of the app's windows on that display,
-because some apps (Chrome) split their tab strip and content into separate windows that only cover
-the display together.
-
-Off by default — it changes which app receives your input, which should not be a surprise.
+Off by default. Enabling it can still raise the target app and changes where keyboard input goes.
 
 ### App wheel (radial launcher)
 

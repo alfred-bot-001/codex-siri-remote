@@ -18,6 +18,7 @@ SWIFT_FILES=(
     "BuiltinMicFeeder.swift"
     "CursorController.swift"
     "FocusFollowsCursor.swift"
+    "FocusPolicy.swift"
     "MediaController.swift"
     "MediaKeyInterceptor.swift"
     "TouchHandler.swift"

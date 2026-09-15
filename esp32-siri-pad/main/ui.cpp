@@ -42,7 +42,7 @@ static void tick(lv_timer_t*){
  lv_obj_set_style_bg_color(dot,lv_color_hex(s.ble?0x27c466:0xa5aeba),0);
  lv_color_t color=s.voice?lv_color_white():blue();
  lv_obj_set_style_bg_color(mic,s.voice?blue():lv_color_hex(0xe5f1ff),0);
- lv_obj_set_style_shadow_width(mic,s.voice?20:0,0);lv_obj_set_style_shadow_color(mic,blue(),0);lv_obj_set_style_shadow_opa(mic,LV_OPA_30,0);
+ lv_obj_set_style_shadow_width(mic,s.voice?12:0,0);lv_obj_set_style_shadow_color(mic,blue(),0);lv_obj_set_style_shadow_opa(mic,LV_OPA_30,0);
  for(auto *o:{capsule,stem,base})lv_obj_set_style_bg_color(o,color,0);
  lv_obj_set_style_arc_color(arc,color,LV_PART_MAIN);
  lv_obj_set_style_opa(mic,s.usb?LV_OPA_COVER:LV_OPA_50,0);
@@ -98,24 +98,24 @@ void pad_ui_init(){
   auto *label=text(apps[i],i==0?"ChatGPT":"Claude",27,17,&lv_font_montserrat_20);
   lv_obj_set_style_bg_color(apps[i],lv_color_hex(0xffffff),LV_STATE_PRESSED);
  }
- mic=box(screen,88,160,144,144,0xe5f1ff,72);lv_obj_add_flag(mic,LV_OBJ_FLAG_CLICKABLE);
+ mic=box(screen,100,150,120,120,0xe5f1ff,60);lv_obj_add_flag(mic,LV_OBJ_FLAG_CLICKABLE);
  lv_obj_add_event_cb(mic,[](lv_event_t*){pad_toggle_board_mic();},LV_EVENT_CLICKED,nullptr);
- capsule=box(mic,58,30,28,52,0x245bff,14);
- arc=lv_arc_create(mic);lv_obj_remove_style_all(arc);lv_obj_set_pos(arc,46,49);lv_obj_set_size(arc,52,52);
- lv_arc_set_bg_angles(arc,0,180);lv_arc_set_angles(arc,0,0);lv_obj_set_style_arc_width(arc,5,LV_PART_MAIN);lv_obj_set_style_arc_color(arc,blue(),LV_PART_MAIN);lv_obj_set_style_arc_rounded(arc,true,LV_PART_MAIN);lv_obj_clear_flag(arc,LV_OBJ_FLAG_CLICKABLE);
- stem=box(mic,69,98,6,17,0x245bff,3);base=box(mic,56,112,32,5,0x245bff,3);
- mic_status=text(screen,"准备就绪",0,324,&font_cn20);lv_obj_set_width(mic_status,320);lv_obj_set_style_text_align(mic_status,LV_TEXT_ALIGN_CENTER,0);
+ capsule=box(mic,49,24,22,44,0x245bff,11);
+ arc=lv_arc_create(mic);lv_obj_remove_style_all(arc);lv_obj_set_pos(arc,38,40);lv_obj_set_size(arc,44,44);
+ lv_arc_set_bg_angles(arc,0,180);lv_arc_set_angles(arc,0,0);lv_obj_set_style_arc_width(arc,4,LV_PART_MAIN);lv_obj_set_style_arc_color(arc,blue(),LV_PART_MAIN);lv_obj_set_style_arc_rounded(arc,true,LV_PART_MAIN);lv_obj_clear_flag(arc,LV_OBJ_FLAG_CLICKABLE);
+ stem=box(mic,58,82,4,14,0x245bff,2);base=box(mic,47,94,26,4,0x245bff,2);
+ mic_status=text(screen,"准备就绪",0,280,&font_cn20);lv_obj_set_width(mic_status,320);lv_obj_set_style_text_align(mic_status,LV_TEXT_ALIGN_CENTER,0);
  const char *labels[]={LV_SYMBOL_LEFT,LV_SYMBOL_RIGHT,LV_SYMBOL_NEW_LINE};uint8_t codes[]={0x50,0x4f,0x28};
  for(int i=0;i<3;i++){
-  keys[i]=box(screen,i==0?16:i==1?240:88,365,i==2?144:64,60,i==2?0x171a1c:0xffffff,13);
-  lv_obj_add_flag(keys[i],LV_OBJ_FLAG_CLICKABLE);lv_obj_set_style_bg_color(keys[i],lv_color_hex(i==2?0x40454a:0xdce6ff),LV_STATE_PRESSED);
+  keys[i]=box(screen,i==0?16:i==1?240:88,320,i==2?144:64,92,i==2?0x245bff:0xffffff,13);
+  lv_obj_add_flag(keys[i],LV_OBJ_FLAG_CLICKABLE);lv_obj_set_style_bg_color(keys[i],lv_color_hex(i==2?0x1742c8:0xdce6ff),LV_STATE_PRESSED);
   lv_obj_add_event_cb(keys[i],key_event,LV_EVENT_ALL,(void*)(uintptr_t)codes[i]);
   auto *label=text(keys[i],labels[i],0,0,&lv_font_montserrat_28);lv_obj_align(label,LV_ALIGN_CENTER,i==2?-28:0,0);
   if(i==2){lv_obj_set_style_text_color(label,lv_color_white(),0);auto *t=text(keys[i],"回车",0,0,&font_cn20);lv_obj_set_style_text_color(t,lv_color_white(),0);lv_obj_align(t,LV_ALIGN_CENTER,22,0);}
  }
- input_button=box(screen,16,437,288,36,0xffffff,12);lv_obj_add_flag(input_button,LV_OBJ_FLAG_CLICKABLE);
+ input_button=box(screen,16,428,288,44,0xffffff,12);lv_obj_add_flag(input_button,LV_OBJ_FLAG_CLICKABLE);
  lv_obj_add_event_cb(input_button,shortcut_event,LV_EVENT_CLICKED,(void*)(uintptr_t)PAD_ACTION_INPUT);
- text(input_button,"输入法",14,7,&font_cn20);auto *switch_label=text(input_button,"切换",214,7,&font_cn20);lv_obj_set_style_text_color(switch_label,blue(),0);
+ text(input_button,"输入法",14,11,&font_cn20);auto *switch_label=text(input_button,"切换",214,11,&font_cn20);lv_obj_set_style_text_color(switch_label,blue(),0);
  lv_obj_set_style_bg_color(input_button,lv_color_hex(0xdce6ff),LV_STATE_PRESSED);
  lv_timer_create(tick,100,nullptr);lvgl_port_unlock();pad_onboard_init(bus);
  // An explicit final panel reset/redraw restored the real display in field testing.

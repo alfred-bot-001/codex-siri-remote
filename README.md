@@ -35,8 +35,8 @@
 |---|---|
 | 按住遥控器侧面语音键 | 保持 **右 Option**，使用遥控器麦克风；松开停止 |
 | 遥控器圆盘中央确认键 | 回车 |
-| 遥控器圆环左键／屏幕 ChatGPT | 左 Ctrl＋左 Option＋左 Command＋←：唤起／隐藏 ChatGPT |
-| 遥控器圆环右键／屏幕 Claude | 左 Ctrl＋左 Option＋左 Command＋→：唤起／隐藏 Claude |
+| 遥控器圆环左键／屏幕 ChatGPT | 左 Ctrl＋左 Option＋左 Command＋G：唤起／隐藏 ChatGPT |
+| 遥控器圆环右键／屏幕 Claude | 左 Ctrl＋左 Option＋左 Command＋C：唤起／隐藏 Claude |
 | 遥控器小电视键／屏幕输入法 | Command＋空格：切换输入法 |
 | 屏幕底部左右箭头 | 左右移动光标 |
 | 屏幕大回车按钮 | 回车 |

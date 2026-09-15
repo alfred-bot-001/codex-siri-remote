@@ -38,12 +38,12 @@ int main(){
  // A voice-end sentinel releases the modifier immediately.
  short_frame[4]=0;pad_remote_audio(short_frame,5);assert(!status().voice);assert(drain().back()==Report{});
  // Application shortcuts use only LEFT modifiers and produce a complete pulse.
- reset();pad_remote_buttons(0x1000);r=drain();assert(r.size()==2&&r[0][0]==0x0d&&r[0][2]==0x50&&r[1]==Report{});assert(status().last_app==PAD_ACTION_CHATGPT);
- pad_remote_buttons(0x1000);assert(drain().empty());pad_remote_buttons(0);pad_remote_buttons(0x400);r=drain();assert(r.size()==2&&r[0][0]==0x0d&&r[0][2]==0x4f&&r[1]==Report{});assert(status().last_app==PAD_ACTION_CLAUDE);
+ reset();pad_remote_buttons(0x1000);r=drain();assert(r.size()==2&&r[0][0]==0x0d&&r[0][2]==0x0a&&r[1]==Report{});assert(status().last_app==PAD_ACTION_CHATGPT);
+ pad_remote_buttons(0x1000);assert(drain().empty());pad_remote_buttons(0);pad_remote_buttons(0x400);r=drain();assert(r.size()==2&&r[0][0]==0x0d&&r[0][2]==0x06&&r[1]==Report{});assert(status().last_app==PAD_ACTION_CLAUDE);
  // TV sends Command+Space, not Return, once until a complete release.
  pad_remote_buttons(0);pad_remote_buttons(1);r=drain();assert(r.size()==2&&r[0][0]==8&&r[0][2]==0x2c&&r[1]==Report{});pad_remote_buttons(1);assert(drain().empty());
  // Touch app switch stops recording and releases Option before the chord.
- reset();pad_toggle_board_mic();drain();pad_shortcut(PAD_ACTION_CLAUDE);r=drain();assert(r.size()==3&&r[0]==Report{}&&r[1][0]==0x0d&&r[1][2]==0x4f&&r[2]==Report{});assert(!status().voice);
+ reset();pad_toggle_board_mic();drain();pad_shortcut(PAD_ACTION_CLAUDE);r=drain();assert(r.size()==3&&r[0]==Report{}&&r[1][0]==0x0d&&r[1][2]==0x06&&r[2]==Report{});assert(!status().voice);
  // A remote shortcut during voice does not restart until all buttons release.
  reset();pad_remote_buttons(0x20);drain();pad_remote_buttons(0x1020);r=drain();assert(r.size()==3&&r[0]==Report{}&&r[1][0]==0x0d&&r[2]==Report{});pad_remote_buttons(0x20);assert(!status().voice);pad_remote_buttons(0);pad_remote_buttons(0x20);assert(status().voice);
  // No shortcut before arming, while disconnected or on conflicting directions.

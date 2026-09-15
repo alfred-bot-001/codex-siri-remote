@@ -53,7 +53,7 @@ static void shortcut_locked(pad_action_t action){
  source_locked(MIC_OFF);report_locked();
  uint8_t r[8]={};
  r[0]=action==PAD_ACTION_INPUT?0x08:0x0d; // Left GUI, or Left Ctrl+Alt+GUI
- r[2]=action==PAD_ACTION_INPUT?0x2c:action==PAD_ACTION_CHATGPT?0x50:0x4f;
+ r[2]=action==PAD_ACTION_INPUT?0x2c:action==PAD_ACTION_CHATGPT?0x0a:0x06; // Space, G, C
  memcpy(hid[(hidhead+hidused)%64],r,8);hidused++;
  memset(hid[(hidhead+hidused)%64],0,8);hidused++;
  memset(last_report,0,8);

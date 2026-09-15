@@ -6,9 +6,11 @@
 extern "C" {
 #endif
 typedef enum { MIC_OFF, MIC_REMOTE, MIC_BOARD } mic_source_t;
+typedef enum { PAD_ACTION_NONE, PAD_ACTION_CHATGPT, PAD_ACTION_CLAUDE, PAD_ACTION_INPUT } pad_action_t;
 typedef struct {
     bool usb, ble, voice, board_ready, connecting;
     mic_source_t source;
+    pad_action_t last_app; // Last local command, not computer application state.
     uint32_t audio_frames, audio_errors, lost_packets, fifo_drops, last_peak;
 } pad_status_t;
 void pad_init(void);
@@ -19,6 +21,7 @@ void pad_remote_buttons(uint16_t mask);
 void pad_remote_audio(const uint8_t *data, size_t len);
 void pad_usb_connected(bool ready);
 void pad_touch_key(uint8_t key, bool down);
+void pad_shortcut(pad_action_t action);
 void pad_toggle_board_mic(void);
 void pad_request_pairing(void);
 bool pad_take_pairing_request(void);

@@ -12,8 +12,10 @@ int main(){
  pad_init();reset();
  // Right Option down/up must survive even a short press without audio.
  pad_remote_buttons(0x20);pad_remote_buttons(0);auto r=drain();assert(r.size()==2&&r[0][0]==0x40&&r[1]==Report{});
- // Exact HID key usages, including simultaneous keys and release.
- pad_remote_buttons(0x1408);r=drain();assert(r.size()==1&&r[0][2]==0x28&&r[0][3]==0x50&&r[0][4]==0x4f);pad_remote_buttons(0);assert(drain().back()==Report{});
+ // Screen arrows remain cursor keys; center remains Return.
+ pad_touch_key(0x50,true);pad_touch_key(0x4f,true);pad_remote_buttons(0x8);
+ r=drain();assert(r.back()[2]==0x28&&r.back()[3]==0x50&&r.back()[4]==0x4f);
+ pad_touch_key(0x50,false);pad_touch_key(0x4f,false);pad_remote_buttons(0);assert(drain().back()==Report{});
  // A held button during connection must not inject input until a release.
  reset();pad_remote_connected(true);pad_remote_buttons(0x28);assert(drain().empty());assert(!status().voice);pad_remote_buttons(0);pad_remote_buttons(0x20);assert(status().source==MIC_REMOTE);
  // Disconnect releases Option and drops all buffered audio.
@@ -35,5 +37,19 @@ int main(){
  reset();pad_remote_buttons(0x20);uint8_t short_frame[5]={0,0,0,0,94};pad_remote_audio(short_frame,5);pad_remote_audio(short_frame,0);assert(status().audio_errors==0);
  // A voice-end sentinel releases the modifier immediately.
  short_frame[4]=0;pad_remote_audio(short_frame,5);assert(!status().voice);assert(drain().back()==Report{});
- puts("PASS: 11 state, disconnect, stale-audio, source-isolation and HID scenarios");
+ // Application shortcuts use only LEFT modifiers and produce a complete pulse.
+ reset();pad_remote_buttons(0x1000);r=drain();assert(r.size()==2&&r[0][0]==0x0d&&r[0][2]==0x50&&r[1]==Report{});assert(status().last_app==PAD_ACTION_CHATGPT);
+ pad_remote_buttons(0x1000);assert(drain().empty());pad_remote_buttons(0);pad_remote_buttons(0x400);r=drain();assert(r.size()==2&&r[0][0]==0x0d&&r[0][2]==0x4f&&r[1]==Report{});assert(status().last_app==PAD_ACTION_CLAUDE);
+ // TV sends Command+Space, not Return, once until a complete release.
+ pad_remote_buttons(0);pad_remote_buttons(1);r=drain();assert(r.size()==2&&r[0][0]==8&&r[0][2]==0x2c&&r[1]==Report{});pad_remote_buttons(1);assert(drain().empty());
+ // Touch app switch stops recording and releases Option before the chord.
+ reset();pad_toggle_board_mic();drain();pad_shortcut(PAD_ACTION_CLAUDE);r=drain();assert(r.size()==3&&r[0]==Report{}&&r[1][0]==0x0d&&r[1][2]==0x4f&&r[2]==Report{});assert(!status().voice);
+ // A remote shortcut during voice does not restart until all buttons release.
+ reset();pad_remote_buttons(0x20);drain();pad_remote_buttons(0x1020);r=drain();assert(r.size()==3&&r[0]==Report{}&&r[1][0]==0x0d&&r[2]==Report{});pad_remote_buttons(0x20);assert(!status().voice);pad_remote_buttons(0);pad_remote_buttons(0x20);assert(status().voice);
+ // No shortcut before arming, while disconnected or on conflicting directions.
+ reset();pad_remote_connected(true);pad_remote_buttons(0x1000);assert(drain().empty());pad_remote_buttons(0);pad_remote_buttons(0x1400);assert(drain().empty());
+ pad_usb_connected(false);pad_shortcut(PAD_ACTION_CHATGPT);assert(drain().empty());pad_usb_connected(true);r=drain();assert(r.size()==1&&r[0]==Report{}&&status().last_app==PAD_ACTION_NONE);
+ // Refuse a pulse atomically if the report queue has insufficient space.
+ reset();for(int i=0;i<62;i++)pad_touch_key(0x28,i%2==0);pad_shortcut(PAD_ACTION_CHATGPT);r=drain();assert(r.size()==62&&r.back()==Report{});for(auto q:r)assert(q[0]==0);
+ puts("PASS: 17 state, source-isolation, shortcut pulse and disconnect scenarios");
 }

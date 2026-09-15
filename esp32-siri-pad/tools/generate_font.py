@@ -28,7 +28,7 @@ with tempfile.TemporaryDirectory() as tmp:
     instantiateVariableFont(font, {'wght': 500}, inplace=True).save(static)
     subprocess.run([converter, '--font', str(static), '--size', '20', '--bpp', '4',
                     '--format', 'lvgl', '--symbols',
-                    '语音输入已连接未连接正在连接左移右移回车板载遥控器麦克风USB等待按住说话点击配对停止',
+                    '语音输入已连接未连接正在连接左移右移回车板载遥控器麦克风USB等待按住说话点击配对停止法切换准备就绪聆听电脑',
                     '--no-compress', '--lv-include', 'lvgl.h', '-o', str(output)], check=True)
 # Do not embed machine-specific converter paths in the published generated file.
 text = output.read_text()

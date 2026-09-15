@@ -29,8 +29,8 @@ static void report_locked(){
   if(state.source!=MIC_OFF)r[0]=0x40; // HID Right Alt / right Option
   unsigned n=2;uint16_t b=(armed?buttons:0)|touch;
   if(b&0x8)r[n++]=0x28;
-  if(b&0x1000)r[n++]=0x50;
-  if(b&0x400)r[n++]=0x4f;
+  if(touch&0x1000)r[n++]=0x50;
+  if(touch&0x400)r[n++]=0x4f;
  }
  if(!memcmp(r,last_report,8))return;
  if(hidused==64){ // Fail closed if the host stops consuming reports.
@@ -44,6 +44,22 @@ static void source_locked(mic_source_t source){
  state.source=source;state.voice=source!=MIC_OFF;epoch++;
  used=head=0;buffered=false;state.last_peak=0;last_audio=pad_millis();report_locked();
 }
+// One complete shortcut pulse per press. Never mix it with held voice/keys.
+static void shortcut_locked(pad_action_t action){
+ if(!state.usb || action<PAD_ACTION_CHATGPT || action>PAD_ACTION_INPUT)return;
+ // Reserve space for releasing old input, the chord and its release.
+ if(hidused>60)return;
+ buttons=touch=0;armed=false;blocked=true;
+ source_locked(MIC_OFF);report_locked();
+ uint8_t r[8]={};
+ r[0]=action==PAD_ACTION_INPUT?0x08:0x0d; // Left GUI, or Left Ctrl+Alt+GUI
+ r[2]=action==PAD_ACTION_INPUT?0x2c:action==PAD_ACTION_CHATGPT?0x50:0x4f;
+ memcpy(hid[(hidhead+hidused)%64],r,8);hidused++;
+ memset(hid[(hidhead+hidused)%64],0,8);hidused++;
+ memset(last_report,0,8);
+ if(action!=PAD_ACTION_INPUT)state.last_app=action;
+}
+void pad_shortcut(pad_action_t action){Guard g;shortcut_locked(action);}
 static void append_locked(const int16_t *data,size_t n){
  unsigned peak=0;
  for(size_t i=0;i<n;i++)peak=std::max(peak,unsigned(data[i]<0?-int(data[i]):data[i]));
@@ -60,6 +76,11 @@ void pad_remote_buttons(uint16_t mask){
  Guard g;if(!state.ble)return;
  if(!mask){armed=true;blocked=false;}
  uint16_t prev=buttons;buttons=mask;
+ uint16_t hotkeys=mask&0x1401; // Left, Right, TV
+ if(armed && state.usb && hotkeys && !(hotkeys&(hotkeys-1)) && (hotkeys&~prev)){
+  shortcut_locked(hotkeys==0x1000?PAD_ACTION_CHATGPT:hotkeys==0x400?PAD_ACTION_CLAUDE:PAD_ACTION_INPUT);
+  return;
+ }
  if(armed && state.usb && !blocked && (mask&0x20) && !(prev&0x20))source_locked(MIC_REMOTE);
  if(!(mask&0x20) && state.source==MIC_REMOTE)source_locked(MIC_OFF);
  report_locked();
@@ -74,7 +95,7 @@ void pad_remote_audio(const uint8_t *data,size_t len){
  if(xQueueSend(packets,&p,0)!=pdTRUE){Guard g;state.fifo_drops++;}
 }
 void pad_usb_connected(bool ready){
- Guard g;state.usb=ready;buttons=touch=0;armed=false;blocked=false;source_locked(MIC_OFF);
+ Guard g;state.usb=ready;state.last_app=PAD_ACTION_NONE;buttons=touch=0;armed=false;blocked=false;source_locked(MIC_OFF);
  hidhead=hidused=0;memset(last_report,0,8);memset(hid[0],0,8);hidused=ready?1:0;
 }
 void pad_touch_key(uint8_t key,bool down){

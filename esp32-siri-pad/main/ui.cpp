@@ -13,12 +13,12 @@
 #include "soc/soc.h"
 #include <atomic>
 LV_FONT_DECLARE(font_cn20);
-static lv_obj_t *mic,*capsule,*arc,*stem,*base,*status,*dot,*keys[3];
+static lv_obj_t *mic,*capsule,*arc,*stem,*base,*status,*dot,*keys[3],*apps[2],*input_button,*mic_status;
 static esp_lcd_panel_handle_t panel;
 static esp_io_expander_handle_t expander;
 static i2c_master_dev_handle_t pmic;
 static std::atomic<uint32_t> ui_ticks{0};
-static lv_color_t blue(){return lv_color_hex(0x0088ff);}
+static lv_color_t blue(){return lv_color_hex(0x245bff);}
 static lv_obj_t *box(lv_obj_t *parent,int x,int y,int w,int h,uint32_t color,int radius){
  auto *o=lv_obj_create(parent);lv_obj_remove_style_all(o);lv_obj_set_pos(o,x,y);lv_obj_set_size(o,w,h);
  lv_obj_set_style_bg_color(o,lv_color_hex(color),0);lv_obj_set_style_bg_opa(o,LV_OPA_COVER,0);lv_obj_set_style_radius(o,radius,0);
@@ -32,10 +32,13 @@ static void key_event(lv_event_t *e){
  if(code==LV_EVENT_PRESSED)pad_touch_key(key,true);
  if(code==LV_EVENT_RELEASED||code==LV_EVENT_PRESS_LOST)pad_touch_key(key,false);
 }
+static void shortcut_event(lv_event_t *e){
+ pad_shortcut((pad_action_t)(uintptr_t)lv_event_get_user_data(e));
+}
 static void tick(lv_timer_t*){
  ui_ticks++;
  pad_status_t s;pad_status(&s);
- lv_label_set_text(status,s.ble?"已连接":s.connecting?"正在连接":"未连接");
+ lv_label_set_text(status,s.ble?"已连接":s.connecting?"连接中":"未连接");
  lv_obj_set_style_bg_color(dot,lv_color_hex(s.ble?0x27c466:0xa5aeba),0);
  lv_color_t color=s.voice?lv_color_white():blue();
  lv_obj_set_style_bg_color(mic,s.voice?blue():lv_color_hex(0xe5f1ff),0);
@@ -44,6 +47,15 @@ static void tick(lv_timer_t*){
  lv_obj_set_style_arc_color(arc,color,LV_PART_MAIN);
  lv_obj_set_style_opa(mic,s.usb?LV_OPA_COVER:LV_OPA_50,0);
  for(auto *o:keys)lv_obj_set_style_opa(o,s.usb?LV_OPA_COVER:LV_OPA_50,0);
+ for(int i=0;i<2;i++){
+  bool selected=s.last_app==(i==0?PAD_ACTION_CHATGPT:PAD_ACTION_CLAUDE);
+  lv_obj_set_style_bg_color(apps[i],lv_color_hex(selected?0xffffff:0xe6e3dd),0);
+  lv_obj_set_style_border_width(apps[i],selected?2:0,0);
+  lv_obj_set_style_border_color(apps[i],lv_color_hex(i==0?0x12a585:0xd77b5e),0);
+  lv_obj_set_style_opa(apps[i],s.usb?LV_OPA_COVER:LV_OPA_50,0);
+ }
+ lv_obj_set_style_opa(input_button,s.usb?LV_OPA_COVER:LV_OPA_50,0);
+ lv_label_set_text(mic_status,!s.usb?"连接电脑":s.voice?"正在聆听":"准备就绪");
 }
 void pad_ui_init(){
  i2c_master_bus_config_t bc{};bc.i2c_port=I2C_NUM_0;bc.sda_io_num=GPIO_NUM_8;bc.scl_io_num=GPIO_NUM_7;
@@ -71,29 +83,40 @@ void pad_ui_init(){
  // LVGL rotates both the software framebuffer and pointer coordinates.
  // Keep the touch controller at rotation 0 to avoid applying this twice.
  lv_disp_set_rotation(display,LV_DISP_ROT_180);
- auto *screen=lv_scr_act();lv_obj_set_style_bg_color(screen,lv_color_hex(0xffffff),0);lv_obj_clear_flag(screen,LV_OBJ_FLAG_SCROLLABLE);
- text(screen,"语音输入",18,15,&font_cn20);
- auto *card=box(screen,16,53,288,54,0xf6f8fb,12);lv_obj_add_flag(card,LV_OBJ_FLAG_CLICKABLE);
+ auto *screen=lv_scr_act();lv_obj_set_style_bg_color(screen,lv_color_hex(0xf7f6f2),0);lv_obj_clear_flag(screen,LV_OBJ_FLAG_SCROLLABLE);
+ auto *card=box(screen,12,12,296,32,0xf7f6f2,0);lv_obj_add_flag(card,LV_OBJ_FLAG_CLICKABLE);
  lv_obj_add_event_cb(card,[](lv_event_t*){pad_request_pairing();},LV_EVENT_LONG_PRESSED,nullptr);
- auto *bt=text(card,LV_SYMBOL_BLUETOOTH,13,15,&lv_font_montserrat_20);lv_obj_set_style_text_color(bt,blue(),0);
- text(card,"Apple TV",43,9,&lv_font_montserrat_14);text(card,"遥控器",43,28,&font_cn20);
- dot=box(card,204,24,7,7,0xa5aeba,4);status=text(card,"未连接",219,18,&font_cn20);
- // Fit the Chinese connection label inside the card.
- lv_obj_set_pos(dot,183,24);lv_obj_set_pos(status,197,18);
- mic=box(screen,88,139,144,144,0xe5f1ff,72);lv_obj_add_flag(mic,LV_OBJ_FLAG_CLICKABLE);
+ auto *bt=text(card,LV_SYMBOL_BLUETOOTH,0,6,&lv_font_montserrat_20);lv_obj_set_style_text_color(bt,blue(),0);
+ text(card,"Apple TV",25,8,&lv_font_montserrat_14);text(card,"遥控器",96,5,&font_cn20);
+ dot=box(card,213,13,7,7,0xa5aeba,4);status=text(card,"未连接",228,5,&font_cn20);
+ auto *app_group=box(screen,16,56,288,62,0xe6e3dd,30);
+ for(int i=0;i<2;i++){
+  apps[i]=box(app_group,4+i*140,4,140,54,0xe6e3dd,27);
+  lv_obj_add_flag(apps[i],LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(apps[i],shortcut_event,LV_EVENT_CLICKED,(void*)(uintptr_t)(i==0?PAD_ACTION_CHATGPT:PAD_ACTION_CLAUDE));
+  box(apps[i],12,23,7,7,i==0?0x12a585:0xd77b5e,2);
+  auto *label=text(apps[i],i==0?"ChatGPT":"Claude",27,17,&lv_font_montserrat_20);
+  lv_obj_set_style_bg_color(apps[i],lv_color_hex(0xffffff),LV_STATE_PRESSED);
+ }
+ mic=box(screen,88,160,144,144,0xe5f1ff,72);lv_obj_add_flag(mic,LV_OBJ_FLAG_CLICKABLE);
  lv_obj_add_event_cb(mic,[](lv_event_t*){pad_toggle_board_mic();},LV_EVENT_CLICKED,nullptr);
- capsule=box(mic,58,30,28,52,0x0088ff,14);
+ capsule=box(mic,58,30,28,52,0x245bff,14);
  arc=lv_arc_create(mic);lv_obj_remove_style_all(arc);lv_obj_set_pos(arc,46,49);lv_obj_set_size(arc,52,52);
  lv_arc_set_bg_angles(arc,0,180);lv_arc_set_angles(arc,0,0);lv_obj_set_style_arc_width(arc,5,LV_PART_MAIN);lv_obj_set_style_arc_color(arc,blue(),LV_PART_MAIN);lv_obj_set_style_arc_rounded(arc,true,LV_PART_MAIN);lv_obj_clear_flag(arc,LV_OBJ_FLAG_CLICKABLE);
- stem=box(mic,69,98,6,17,0x0088ff,3);base=box(mic,56,112,32,5,0x0088ff,3);
+ stem=box(mic,69,98,6,17,0x245bff,3);base=box(mic,56,112,32,5,0x245bff,3);
+ mic_status=text(screen,"准备就绪",0,324,&font_cn20);lv_obj_set_width(mic_status,320);lv_obj_set_style_text_align(mic_status,LV_TEXT_ALIGN_CENTER,0);
  const char *labels[]={LV_SYMBOL_LEFT,LV_SYMBOL_RIGHT,LV_SYMBOL_NEW_LINE};uint8_t codes[]={0x50,0x4f,0x28};
  for(int i=0;i<3;i++){
-  keys[i]=box(screen,i==1?166:16,i==2?394:313,i==2?288:138,i==2?70:68,0xe8f2ff,14);
-  lv_obj_add_flag(keys[i],LV_OBJ_FLAG_CLICKABLE);lv_obj_set_style_bg_color(keys[i],lv_color_hex(0xc4e1ff),LV_STATE_PRESSED);
+  keys[i]=box(screen,i==0?16:i==1?240:88,365,i==2?144:64,60,i==2?0x171a1c:0xffffff,13);
+  lv_obj_add_flag(keys[i],LV_OBJ_FLAG_CLICKABLE);lv_obj_set_style_bg_color(keys[i],lv_color_hex(i==2?0x40454a:0xdce6ff),LV_STATE_PRESSED);
   lv_obj_add_event_cb(keys[i],key_event,LV_EVENT_ALL,(void*)(uintptr_t)codes[i]);
-  auto *label=text(keys[i],labels[i],0,0,&lv_font_montserrat_28);lv_obj_align(label,LV_ALIGN_CENTER,i==2?-34:0,0);
-  if(i==2){auto *t=text(keys[i],"回车",0,0,&font_cn20);lv_obj_align(t,LV_ALIGN_CENTER,22,0);}
+  auto *label=text(keys[i],labels[i],0,0,&lv_font_montserrat_28);lv_obj_align(label,LV_ALIGN_CENTER,i==2?-28:0,0);
+  if(i==2){lv_obj_set_style_text_color(label,lv_color_white(),0);auto *t=text(keys[i],"回车",0,0,&font_cn20);lv_obj_set_style_text_color(t,lv_color_white(),0);lv_obj_align(t,LV_ALIGN_CENTER,22,0);}
  }
+ input_button=box(screen,16,437,288,36,0xffffff,12);lv_obj_add_flag(input_button,LV_OBJ_FLAG_CLICKABLE);
+ lv_obj_add_event_cb(input_button,shortcut_event,LV_EVENT_CLICKED,(void*)(uintptr_t)PAD_ACTION_INPUT);
+ text(input_button,"输入法",14,7,&font_cn20);auto *switch_label=text(input_button,"切换",214,7,&font_cn20);lv_obj_set_style_text_color(switch_label,blue(),0);
+ lv_obj_set_style_bg_color(input_button,lv_color_hex(0xdce6ff),LV_STATE_PRESSED);
  lv_timer_create(tick,100,nullptr);lvgl_port_unlock();pad_onboard_init(bus);
  // An explicit final panel reset/redraw restored the real display in field testing.
  // Run after all board peripherals are initialized, before exposing USB inputs.

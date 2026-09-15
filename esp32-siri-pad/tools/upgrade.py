@@ -1,11 +1,19 @@
 """Upgrade this explicitly identified pad, preserving NVS; no port auto-selection."""
-import pathlib, subprocess, sys, time, serial
+import argparse, pathlib, subprocess, sys, time, serial
+from serial.tools import list_ports
+parser=argparse.ArgumentParser()
+parser.add_argument("--port", default="/dev/cu.usbmodem21304")
+parser.add_argument("--download-port", default="/dev/cu.usbmodem21301")
+args=parser.parse_args()
+info=next((p for p in list_ports.comports() if p.device==args.port),None)
+if not info or info.vid!=0xcafe or info.pid!=0x4015 or info.serial_number!="1020BA4658B4-PAD1":
+ raise SystemExit("Expected Siri Voice Pad not found on the specified port")
 root=pathlib.Path(__file__).resolve().parents[2]
 app=root/'esp32-siri-pad/.pio/build/pad/firmware.bin'
 assert app.is_file()
 # Firmware CDC uses DTR, but its control lines are not hardware reset lines.
-s=serial.Serial(port=None,baudrate=115200,timeout=.2);s.dtr=False;s.rts=False;s.port='/dev/cu.usbmodem21304';s.open();s.dtr=True;s.write(b'B');s.flush();s.close()
-port='/dev/cu.usbmodem21301'
+s=serial.Serial(port=None,baudrate=115200,timeout=.2);s.dtr=False;s.rts=False;s.port=args.port;s.open();s.dtr=True;s.write(b'B');s.flush();s.close()
+port=args.download_port
 for _ in range(100):
  if pathlib.Path(port).exists():break
  time.sleep(.1)

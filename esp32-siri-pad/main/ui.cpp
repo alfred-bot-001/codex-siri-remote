@@ -68,6 +68,9 @@ void pad_ui_init(){
  auto *display=lvgl_port_add_disp(&dc);assert(display);
  lvgl_port_touch_cfg_t tc{};tc.disp=display;tc.handle=touch;assert(lvgl_port_add_touch(&tc));
  lvgl_port_lock(0);
+ // LVGL rotates both the software framebuffer and pointer coordinates.
+ // Keep the touch controller at rotation 0 to avoid applying this twice.
+ lv_disp_set_rotation(display,LV_DISP_ROT_180);
  auto *screen=lv_scr_act();lv_obj_set_style_bg_color(screen,lv_color_hex(0xffffff),0);lv_obj_clear_flag(screen,LV_OBJ_FLAG_SCROLLABLE);
  text(screen,"语音输入",18,15,&font_cn20);
  auto *card=box(screen,16,53,288,54,0xf6f8fb,12);lv_obj_add_flag(card,LV_OBJ_FLAG_CLICKABLE);

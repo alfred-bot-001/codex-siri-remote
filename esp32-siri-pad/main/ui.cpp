@@ -12,12 +12,29 @@
 #include "soc/gpio_reg.h"
 #include "soc/soc.h"
 #include <atomic>
+#include "esp_heap_caps.h"
+#include "esp_attr.h"
 LV_FONT_DECLARE(font_cn20);
 static lv_obj_t *mic,*capsule,*arc,*stem,*base,*status,*dot,*keys[3],*apps[2],*input_button,*mic_status;
 static esp_lcd_panel_handle_t panel;
 static esp_io_expander_handle_t expander;
 static i2c_master_dev_handle_t pmic;
 static std::atomic<uint32_t> ui_ticks{0};
+static std::atomic<uint32_t> ui_heartbeat_ms{0};
+static RTC_NOINIT_ATTR uint32_t ui_stall_marker;
+static void ui_watchdog(void*){
+ for(;;){
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  uint32_t age=pad_millis()-ui_heartbeat_ms.load();
+  if(age>10000){
+   ESP_LOGE("display","UI heartbeat stalled for %lu ms; releasing input and restarting",(unsigned long)age);
+   ui_stall_marker=0x55495354;
+   pad_cancel_voice();
+   vTaskDelay(pdMS_TO_TICKS(100));
+   esp_restart();
+  }
+ }
+}
 static lv_color_t blue(){return lv_color_hex(0x245bff);}
 static lv_obj_t *box(lv_obj_t *parent,int x,int y,int w,int h,uint32_t color,int radius){
  auto *o=lv_obj_create(parent);lv_obj_remove_style_all(o);lv_obj_set_pos(o,x,y);lv_obj_set_size(o,w,h);
@@ -36,8 +53,15 @@ static void shortcut_event(lv_event_t *e){
  pad_shortcut((pad_action_t)(uintptr_t)lv_event_get_user_data(e));
 }
 static void tick(lv_timer_t*){
- ui_ticks++;
+ ui_ticks++;ui_heartbeat_ms=pad_millis();
  pad_status_t s;pad_status(&s);
+ static bool initialized=false;
+ static pad_status_t previous{};
+ // Heartbeat continues even when idle; repaint only fields visible in the UI.
+ if(initialized && s.usb==previous.usb && s.ble==previous.ble &&
+    s.connecting==previous.connecting && s.voice==previous.voice &&
+    s.last_app==previous.last_app)return;
+ previous=s;initialized=true;
  lv_label_set_text(status,s.ble?"已连接":s.connecting?"连接中":"未连接");
  lv_obj_set_style_bg_color(dot,lv_color_hex(s.ble?0x27c466:0xa5aeba),0);
  lv_color_t color=s.voice?lv_color_white():blue();
@@ -58,6 +82,9 @@ static void tick(lv_timer_t*){
  lv_label_set_text(mic_status,!s.usb?"连接电脑":s.voice?"正在聆听":"准备就绪");
 }
 void pad_ui_init(){
+ if(esp_reset_reason()==ESP_RST_SW && ui_stall_marker==0x55495354)
+  ESP_LOGW("display","Recovered from a stalled UI task");
+ ui_stall_marker=0;
  i2c_master_bus_config_t bc{};bc.i2c_port=I2C_NUM_0;bc.sda_io_num=GPIO_NUM_8;bc.scl_io_num=GPIO_NUM_7;
  bc.clk_source=I2C_CLK_SRC_DEFAULT;bc.glitch_ignore_cnt=7;bc.flags.enable_internal_pullup=true;
  i2c_master_bus_handle_t bus;ESP_ERROR_CHECK(i2c_new_master_bus(&bc,&bus));
@@ -121,6 +148,8 @@ void pad_ui_init(){
  // An explicit final panel reset/redraw restored the real display in field testing.
  // Run after all board peripherals are initialized, before exposing USB inputs.
  pad_display_recover();
+ ui_heartbeat_ms=pad_millis();
+ assert(xTaskCreatePinnedToCore(ui_watchdog,"ui_watchdog",3072,nullptr,3,nullptr,0)==pdPASS);
 }
 
 uint8_t *pad_ui_snapshot(size_t *size){
@@ -133,6 +162,10 @@ uint8_t *pad_ui_snapshot(size_t *size){
 }
 
 void pad_display_diagnostics(){
+ ESP_LOGI("display","heartbeat_age=%lu heap_free=%lu internal_free=%lu",
+ (unsigned long)(pad_millis()-ui_heartbeat_ms.load()),
+ (unsigned long)heap_caps_get_free_size(MALLOC_CAP_8BIT),
+ (unsigned long)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
  uint32_t reset=0;uint8_t reg=0x90,rails=0;
  auto a=esp_io_expander_get_level(expander,IO_EXPANDER_PIN_NUM_1,&reset);
  auto b=i2c_master_transmit_receive(pmic,&reg,1,&rails,1,100);

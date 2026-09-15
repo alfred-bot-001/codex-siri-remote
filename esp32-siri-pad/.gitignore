@@ -1,0 +1,12 @@
+.pio/
+managed_components/
+reference/
+sdkconfig.pad
+sdkconfig.pad.old
+recordings/
+logs/
+__pycache__/
+*.pyc
+.DS_Store
+backups/
+.venv/

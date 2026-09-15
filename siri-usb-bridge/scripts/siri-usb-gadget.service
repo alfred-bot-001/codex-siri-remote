@@ -1,0 +1,16 @@
+[Unit]
+Description=Siri Remote USB keyboard and microphone device
+After=systemd-modules-load.service
+ConditionPathExists=/sys/class/udc/1000480000.usb
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /opt/siri-usb-bridge/gadget.py start
+ExecStartPost=/usr/bin/chown agent004:agent004 /dev/hidg0
+ExecStop=/usr/bin/python3 /opt/siri-usb-bridge/gadget.py stop
+TimeoutStartSec=30
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

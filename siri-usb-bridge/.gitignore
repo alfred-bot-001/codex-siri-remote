@@ -1,0 +1,4 @@
+__pycache__/
+vendor/siri-remote/target/
+*.wav
+*.pcm

@@ -1,0 +1,5 @@
+.pio/
+backups/
+logs/
+recordings/
+__pycache__/
